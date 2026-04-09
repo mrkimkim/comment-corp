@@ -7,12 +7,14 @@ class CommentCard extends StatelessWidget {
   final Comment comment;
   final double dragOffset;
   final bool showIndicator;
+  final bool detectorActive;
 
   const CommentCard({
     super.key,
     required this.comment,
     this.dragOffset = 0,
     this.showIndicator = false,
+    this.detectorActive = false,
   });
 
   // Stable random nickname based on comment id
@@ -37,10 +39,15 @@ class CommentCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _cardColor(ratio),
             borderRadius: BorderRadius.circular(16),
+            border: detectorActive && comment.isToxic
+                ? Border.all(color: Colors.red, width: 3)
+                : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
+                color: detectorActive && comment.isToxic
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.1),
+                blurRadius: detectorActive && comment.isToxic ? 15 : 10,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -119,19 +126,7 @@ class CommentCard extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 4,
-                children: comment.tags.map((tag) {
-                  return Chip(
-                    label: Text(tag, style: const TextStyle(fontSize: 10)),
-                    padding: EdgeInsets.zero,
-                    materialTapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  );
-                }).toList(),
-              ),
+              const SizedBox(height: 4),
             ],
           ),
         ),

@@ -5,8 +5,14 @@ import 'comment_card.dart';
 class SwipeStack extends StatefulWidget {
   final Comment? comment;
   final void Function(bool approve) onSwiped;
+  final bool detectorActive;
 
-  const SwipeStack({super.key, required this.comment, required this.onSwiped});
+  const SwipeStack({
+    super.key,
+    required this.comment,
+    required this.onSwiped,
+    this.detectorActive = false,
+  });
 
   @override
   State<SwipeStack> createState() => _SwipeStackState();
@@ -105,6 +111,7 @@ class _SwipeStackState extends State<SwipeStack>
             comment: widget.comment!,
             dragOffset: offset,
             showIndicator: true,
+            detectorActive: widget.detectorActive,
           );
         },
       ),

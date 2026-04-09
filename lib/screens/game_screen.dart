@@ -98,10 +98,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 _buildTopBar(game),
                 _buildStatsRow(game),
                 const SizedBox(height: 8),
+                // Active item indicators
+                if (game.detectorActive || game.freezeActive || game.boostActive)
+                  _buildActiveItemBanner(game),
                 Expanded(
                   child: Center(
                     child: SwipeStack(
                       comment: game.currentComment,
+                      detectorActive: game.detectorActive,
                       onSwiped: (approve) {
                         ref
                             .read(gameProvider.notifier)
@@ -334,6 +338,53 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
+  Widget _buildActiveItemBanner(GameState game) {
+    final active = <(String, IconData, Color, double)>[];
+    if (game.detectorActive) {
+      active.add(('탐지기', Icons.search, AppColors.secondary, game.detectorTimer));
+    }
+    if (game.freezeActive) {
+      active.add(('프리즈', Icons.ac_unit, const Color(0xFF87CEEB), game.freezeTimer));
+    }
+    if (game.boostActive) {
+      active.add(('부스트 x3', Icons.bolt, AppColors.accent, game.boostTimer));
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: active.first.$3.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: active.first.$3.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: active.map((item) {
+          final (label, icon, color, timer) = item;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  '$label ${timer.toStringAsFixed(1)}s',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildItemBar(GameState game) {
     final items = [
       ('detector', Icons.search, '탐지기', AppColors.secondary),
@@ -349,12 +400,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
         children: items.map((item) {
           final (name, icon, label, color) = item;
           final count = game.items[name] ?? 0;
+          final isActive = (name == 'detector' && game.detectorActive) ||
+              (name == 'freeze' && game.freezeActive) ||
+              (name == 'boost' && game.boostActive);
           return GestureDetector(
-            onTap: count > 0
+            onTap: count > 0 && !isActive
                 ? () => ref.read(gameProvider.notifier).useItem(name)
                 : null,
             child: Opacity(
-              opacity: count > 0 ? 1.0 : 0.3,
+              opacity: count > 0 || isActive ? 1.0 : 0.3,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -362,15 +416,27 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.2),
+                      color: isActive
+                          ? color.withValues(alpha: 0.4)
+                          : color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
+                      border: isActive
+                          ? Border.all(color: color, width: 2)
+                          : null,
+                      boxShadow: isActive
+                          ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8)]
+                          : null,
                     ),
-                    child: Icon(icon, color: color, size: 22),
+                    child: Icon(icon, color: isActive ? Colors.white : color, size: 22),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$label($count)',
-                    style: AppTextStyles.labelSmall,
+                    isActive ? 'ON' : '$label($count)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                      color: isActive ? color : null,
+                    ),
                   ),
                 ],
               ),
