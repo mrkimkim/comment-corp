@@ -14,8 +14,8 @@ final gameProvider = NotifierProvider<GameNotifier, GameState>(GameNotifier.new)
 
 class GameNotifier extends Notifier<GameState> {
   Timer? _gameTimer;
-  Timer? _commentTimer;
-  List<Comment> _comments = [];
+  List<Comment> _commentQueue = [];
+  int _queueIndex = 0;
   late BalanceConfig _balance;
   late EventService _eventService;
 
@@ -25,7 +25,11 @@ class GameNotifier extends Notifier<GameState> {
   Future<void> startGame(String celebType) async {
     _balance = await BalanceConfig.load();
     final commentService = ref.read(commentServiceProvider);
-    _comments = await commentService.loadComments(celebType);
+    final allComments = await commentService.loadComments(celebType);
+
+    // Pre-build shuffled queue — no duplicates until pool exhausted
+    _commentQueue = commentService.buildRoundQueue(allComments, _balance, celebType);
+    _queueIndex = 0;
 
     _eventService = ref.read(eventServiceProvider);
     await _eventService.load();
@@ -44,7 +48,7 @@ class GameNotifier extends Notifier<GameState> {
     );
 
     _startTimers();
-    _spawnComment();
+    _serveNextComment();
   }
 
   void _startTimers() {
@@ -112,8 +116,6 @@ class GameNotifier extends Notifier<GameState> {
         if (newEvent != null) {
           activeEvent = newEvent;
           eventTimer = newEvent.durationSeconds;
-          // Respawn comment to apply new speed/toxic settings immediately
-          _spawnComment();
         }
       }
 
@@ -166,46 +168,15 @@ class GameNotifier extends Notifier<GameState> {
     });
   }
 
-  void _spawnComment() {
-    _commentTimer?.cancel();
-
-    final phase = _balance.getPhase(state.elapsed);
-    if (phase == null || state.status != GameStatus.playing) return;
-
-    final modifier = _balance.getCelebModifier(state.celebType);
-
-    // Apply event speed multiplier override if active
-    final eventSpeedMult = state.activeEvent?.speedMultiplier;
-    final baseInterval =
-        (phase['interval'] as num).toDouble() *
-        (modifier['speed_multiplier'] as num).toDouble();
-    final interval = eventSpeedMult != null
-        ? baseInterval * eventSpeedMult
-        : baseInterval;
-
-    _commentTimer = Timer(Duration(milliseconds: (interval * 1000).toInt()), () {
-      if (state.status != GameStatus.playing) return;
-
-      final commentService = ref.read(commentServiceProvider);
-      final phase = _balance.getPhase(state.elapsed);
-      if (phase == null) return;
-
-      final modifier = _balance.getCelebModifier(state.celebType);
-
-      // Apply event toxic ratio override if active
-      final toxicRatio = state.activeEvent?.toxicRatioOverride ??
-          (phase['toxic_ratio'] as num).toDouble();
-
-      final comment = commentService.pickComment(
-        pool: _comments,
-        toxicRatio: toxicRatio,
-        maxDifficulty: phase['max_difficulty'] as int,
-        difficultyOffset: (modifier['difficulty_offset'] as num).toInt(),
-      );
-
-      state = state.copyWith(currentComment: comment);
-      _spawnComment();
-    });
+  void _serveNextComment() {
+    if (state.status != GameStatus.playing) return;
+    if (_queueIndex >= _commentQueue.length) {
+      // Queue exhausted — loop back (shouldn't happen in normal play)
+      _queueIndex = 0;
+    }
+    final comment = _commentQueue[_queueIndex];
+    _queueIndex++;
+    state = state.copyWith(currentComment: comment);
   }
 
   void swipe({required bool approve}) {
@@ -226,8 +197,10 @@ class GameNotifier extends Notifier<GameState> {
 
     state = state.copyWith(
       totalProcessed: state.totalProcessed + 1,
-      currentComment: null,
     );
+
+    // Immediately serve next comment — no timer delay
+    _serveNextComment();
   }
 
   void _handleCorrect(Comment comment, int likes) {
@@ -333,22 +306,21 @@ class GameNotifier extends Notifier<GameState> {
   void togglePause() {
     if (state.status == GameStatus.playing) {
       _gameTimer?.cancel();
-      _commentTimer?.cancel();
       state = state.copyWith(status: GameStatus.paused);
     } else if (state.status == GameStatus.paused) {
       _startTimers();
-      _spawnComment();
       state = state.copyWith(status: GameStatus.playing);
     }
   }
 
   void _stopTimers() {
     _gameTimer?.cancel();
-    _commentTimer?.cancel();
   }
 
   void reset() {
     _stopTimers();
+    _commentQueue = [];
+    _queueIndex = 0;
     state = const GameState();
   }
 }

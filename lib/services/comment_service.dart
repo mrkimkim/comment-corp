@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import '../models/comment.dart';
+import '../utils/balance_config.dart';
 
 class CommentService {
   final Map<String, List<Comment>> _cache = {};
@@ -24,25 +25,54 @@ class CommentService {
     }
   }
 
-  Comment pickComment({
-    required List<Comment> pool,
-    required double toxicRatio,
-    required int maxDifficulty,
-    required int difficultyOffset,
-  }) {
-    final isToxic = _random.nextDouble() < toxicRatio;
-    final effectiveMaxDiff = (maxDifficulty + difficultyOffset).clamp(1, 4);
+  /// Build a pre-shuffled queue for the entire round.
+  /// Comments are arranged so difficulty ramps up over phases,
+  /// and no comment repeats until the pool is exhausted.
+  List<Comment> buildRoundQueue(List<Comment> pool, BalanceConfig balance, String celebType) {
+    final modifier = balance.getCelebModifier(celebType);
+    final diffOffset = (modifier['difficulty_offset'] as num).toInt();
+    final queue = <Comment>[];
 
-    var filtered = pool
-        .where((c) => c.isToxic == isToxic && c.difficulty <= effectiveMaxDiff)
-        .toList();
+    // For each phase, pick comments matching that phase's difficulty/toxic ratio
+    for (final phase in balance.phases) {
+      final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 4);
+      final toxicRatio = (phase['toxic_ratio'] as num).toDouble();
+      final phaseDuration = (phase['end'] as num).toDouble() - (phase['start'] as num).toDouble();
+      final interval = (phase['interval'] as num).toDouble() *
+          (modifier['speed_multiplier'] as num).toDouble();
+      final commentCount = (phaseDuration / interval).ceil();
 
-    if (filtered.isEmpty) {
-      filtered = pool.where((c) => c.difficulty <= effectiveMaxDiff).toList();
+      final eligible = pool.where((c) => c.difficulty <= maxDiff).toList()..shuffle(_random);
+
+      // Pick without repeats within phase
+      final used = <String>{};
+      for (var i = 0; i < commentCount; i++) {
+        // Decide toxic or positive
+        final wantToxic = _random.nextDouble() < toxicRatio;
+
+        // Find a comment that hasn't been used yet
+        var picked = eligible.cast<Comment?>().firstWhere(
+          (c) => !used.contains(c!.id) && c.isToxic == wantToxic,
+          orElse: () => null,
+        );
+        // Fallback: any unused comment
+        picked ??= eligible.cast<Comment?>().firstWhere(
+          (c) => !used.contains(c!.id),
+          orElse: () => null,
+        );
+        // If all exhausted, reshuffle and allow repeats
+        if (picked == null) {
+          used.clear();
+          eligible.shuffle(_random);
+          picked = eligible.first;
+        }
+
+        used.add(picked.id);
+        queue.add(picked);
+      }
     }
-    if (filtered.isEmpty) filtered = pool;
 
-    return filtered[_random.nextInt(filtered.length)];
+    return queue;
   }
 
   int rollLikes(Comment comment) {
