@@ -1,0 +1,67 @@
+{
+  "events": [
+    {
+      "id": "trending",
+      "name": "실검 등장",
+      "applies_to": ["all"],
+      "duration_seconds": 10,
+      "speed_multiplier": 0.5,
+      "toxic_ratio_override": null,
+      "comment_pool": "data/comments/event_trending.json"
+    },
+    {
+      "id": "fan_rally",
+      "name": "팬 연합 응원",
+      "applies_to": ["all"],
+      "duration_seconds": 8,
+      "speed_multiplier": null,
+      "toxic_ratio_override": 0.2,
+      "comment_pool": null
+    },
+    {
+      "id": "idol_comeback",
+      "name": "컴백 공개",
+      "applies_to": ["idol"],
+      "duration_seconds": 10,
+      "speed_multiplier": 0.5,
+      "toxic_ratio_override": null,
+      "comment_pool": "data/comments/event_idol_comeback.json"
+    },
+    {
+      "id": "actor_dating",
+      "name": "열애설 터짐",
+      "applies_to": ["actor"],
+      "duration_seconds": 20,
+      "speed_multiplier": null,
+      "toxic_ratio_override": 0.7,
+      "comment_pool": "data/comments/event_actor_dating.json"
+    },
+    {
+      "id": "youtuber_algorithm",
+      "name": "알고리즘 탐",
+      "applies_to": ["youtuber"],
+      "duration_seconds": 15,
+      "speed_multiplier": 0.4,
+      "toxic_ratio_override": null,
+      "comment_pool": null
+    },
+    {
+      "id": "sports_mistake",
+      "name": "결정적 실수",
+      "applies_to": ["sports"],
+      "duration_seconds": 10,
+      "speed_multiplier": null,
+      "toxic_ratio_override": 0.8,
+      "comment_pool": "data/comments/event_sports_mistake.json"
+    },
+    {
+      "id": "politician_conference",
+      "name": "기자회견 실시간",
+      "applies_to": ["politician"],
+      "duration_seconds": 15,
+      "speed_multiplier": 0.5,
+      "toxic_ratio_override": null,
+      "comment_pool": "data/comments/event_politician_conference.json"
+    }
+  ]
+}
