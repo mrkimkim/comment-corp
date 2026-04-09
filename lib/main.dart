@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'constants/app_colors.dart';
 import 'screens/menu_screen.dart';
 
 void main() {
@@ -16,9 +17,10 @@ class CommentCorpApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B9D),
+          seedColor: AppColors.primary,
           brightness: Brightness.light,
         ),
+        scaffoldBackgroundColor: AppColors.background,
         fontFamily: 'Pretendard',
         useMaterial3: true,
       ),

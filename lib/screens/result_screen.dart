@@ -1,36 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_text_styles.dart';
 import '../providers/game_provider.dart';
 
 class ResultScreen extends ConsumerWidget {
   const ResultScreen({super.key});
 
+  static (String grade, Color color) _getGrade(int score) {
+    if (score >= 50000) return ('S', AppColors.gradeS);
+    if (score >= 30000) return ('A', AppColors.gradeA);
+    if (score >= 15000) return ('B', AppColors.gradeB);
+    if (score >= 5000) return ('C', AppColors.gradeC);
+    return ('D', AppColors.gradeD);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final game = ref.watch(gameProvider);
+    final (grade, gradeColor) = _getGrade(game.score);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 48),
               Text(
                 game.isDead ? 'MENTAL BREAK' : 'TIME UP',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: game.isDead ? Colors.red : const Color(0xFF4ECDC4),
+                style: AppTextStyles.heading2.copyWith(
+                  color:
+                      game.isDead ? AppColors.wrong : AppColors.secondary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 game.isDead ? '멘탈이 무너졌습니다...' : '수고하셨습니다!',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: AppTextStyles.label,
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
+              // Grade badge
+              _GradeBadge(grade: grade, color: gradeColor),
+              const SizedBox(height: 24),
               _ScoreCard(
                 score: game.score,
                 maxCombo: game.maxCombo,
@@ -40,16 +53,18 @@ class ResultScreen extends ConsumerWidget {
                 totalProcessed: game.totalProcessed,
               ),
               const Spacer(),
+              // Replay button
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
                   onPressed: () {
                     ref.read(gameProvider.notifier).reset();
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    Navigator.of(context)
+                        .popUntil((route) => route.isFirst);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B9D),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -57,13 +72,74 @@ class ResultScreen extends ConsumerWidget {
                   ),
                   child: const Text(
                     '다시 플레이',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Menu button
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: () {
+                    ref.read(gameProvider.notifier).reset();
+                    Navigator.of(context)
+                        .popUntil((route) => route.isFirst);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: BorderSide(
+                      color: AppColors.textHint.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    '메뉴로',
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
               const SizedBox(height: 32),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradeBadge extends StatelessWidget {
+  final String grade;
+  final Color color;
+
+  const _GradeBadge({required this.grade, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.15),
+        border: Border.all(color: color, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.3),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          grade,
+          style: AppTextStyles.gradeDisplay.copyWith(color: color),
         ),
       ),
     );
@@ -96,7 +172,7 @@ class _ScoreCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -113,31 +189,27 @@ class _ScoreCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.grey,
+              color: AppColors.textHint,
             ),
           ),
-          Text(
-            '$score',
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFFF6B9D),
-            ),
-          ),
+          Text('$score', style: AppTextStyles.scoreDisplay),
           const SizedBox(height: 24),
           Row(
             children: [
-              _stat('최대 콤보', '$maxCombo'),
-              _stat('생존 시간', '${survivalSeconds.toInt()}초'),
-              _stat('정확도', '${accuracy.toStringAsFixed(1)}%'),
+              _stat(Icons.flash_on, '최대 콤보', '$maxCombo'),
+              _stat(Icons.timer, '생존 시간',
+                  '${survivalSeconds.toInt()}초'),
+              _stat(Icons.gps_fixed, '정확도',
+                  '${accuracy.toStringAsFixed(1)}%'),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              _stat('처리', '$totalProcessed'),
-              _stat('정답', '$correctCount'),
-              _stat('오답', '$wrongCount'),
+              _stat(Icons.inbox, '처리', '$totalProcessed'),
+              _stat(Icons.check_circle_outline, '정답',
+                  '$correctCount'),
+              _stat(Icons.cancel_outlined, '오답', '$wrongCount'),
             ],
           ),
         ],
@@ -145,22 +217,14 @@ class _ScoreCard extends StatelessWidget {
     );
   }
 
-  Widget _stat(String label, String value) {
+  Widget _stat(IconData icon, String label, String value) {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF2D3436),
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-          ),
+          Icon(icon, size: 18, color: AppColors.textHint),
+          const SizedBox(height: 4),
+          Text(value, style: AppTextStyles.statValue),
+          Text(label, style: AppTextStyles.statLabel),
         ],
       ),
     );

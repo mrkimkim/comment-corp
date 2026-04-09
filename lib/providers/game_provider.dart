@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/comment.dart';
 import '../models/game_state.dart';
 import '../services/comment_service.dart';
+import '../services/event_service.dart';
 import '../utils/balance_config.dart';
 
 final commentServiceProvider = Provider((_) => CommentService());
+final eventServiceProvider = Provider((_) => EventService());
 final balanceConfigProvider = FutureProvider((_) => BalanceConfig.load());
 
 final gameProvider = NotifierProvider<GameNotifier, GameState>(GameNotifier.new);
@@ -15,6 +17,7 @@ class GameNotifier extends Notifier<GameState> {
   Timer? _commentTimer;
   List<Comment> _comments = [];
   late BalanceConfig _balance;
+  late EventService _eventService;
 
   @override
   GameState build() => const GameState();
@@ -23,6 +26,10 @@ class GameNotifier extends Notifier<GameState> {
     _balance = await BalanceConfig.load();
     final commentService = ref.read(commentServiceProvider);
     _comments = await commentService.loadComments(celebType);
+
+    _eventService = ref.read(eventServiceProvider);
+    await _eventService.load();
+    _eventService.reset();
 
     state = GameState(
       status: GameStatus.playing,
@@ -48,8 +55,69 @@ class GameNotifier extends Notifier<GameState> {
       var mental = state.mental;
       var feverTimer = state.feverTimer;
       var feverActive = state.feverActive;
-      final elapsed = state.elapsed + 0.1;
 
+      // --- Freeze: if active, do NOT advance elapsed ---
+      var freezeActive = state.freezeActive;
+      var freezeTimer = state.freezeTimer;
+      double elapsed;
+      if (freezeActive) {
+        elapsed = state.elapsed; // timer frozen
+        freezeTimer -= 0.1;
+        if (freezeTimer <= 0) {
+          freezeActive = false;
+          freezeTimer = 0;
+        }
+      } else {
+        elapsed = state.elapsed + 0.1;
+      }
+
+      // --- Detector timer tick ---
+      var detectorActive = state.detectorActive;
+      var detectorTimer = state.detectorTimer;
+      if (detectorActive) {
+        detectorTimer -= 0.1;
+        if (detectorTimer <= 0) {
+          detectorActive = false;
+          detectorTimer = 0;
+        }
+      }
+
+      // --- Boost timer tick ---
+      var boostActive = state.boostActive;
+      var boostTimer = state.boostTimer;
+      if (boostActive) {
+        boostTimer -= 0.1;
+        if (boostTimer <= 0) {
+          boostActive = false;
+          boostTimer = 0;
+        }
+      }
+
+      // --- Event timer tick ---
+      var activeEvent = state.activeEvent;
+      var eventTimer = state.eventTimer;
+      var clearActiveEvent = false;
+      if (activeEvent != null) {
+        eventTimer -= 0.1;
+        if (eventTimer <= 0) {
+          clearActiveEvent = true;
+          activeEvent = null;
+          eventTimer = 0;
+        }
+      }
+
+      // --- Check for new event trigger (only if no event active) ---
+      if (activeEvent == null && !clearActiveEvent) {
+        final newEvent = _eventService.checkTrigger(elapsed, state.celebType);
+        if (newEvent != null) {
+          activeEvent = newEvent;
+          eventTimer = newEvent.durationSeconds;
+          // Respawn comment to apply new speed/toxic settings immediately
+          _spawnComment();
+        }
+      }
+
+      // --- Fever heal ---
       if (feverActive) {
         mental = (mental + _balance.feverHealPerSecond * 0.1).clamp(0, 100);
         feverTimer -= 0.1;
@@ -59,6 +127,7 @@ class GameNotifier extends Notifier<GameState> {
         }
       }
 
+      // --- Game over check ---
       if (mental <= 0 || elapsed >= _balance.totalSeconds) {
         _stopTimers();
         state = state.copyWith(
@@ -67,6 +136,14 @@ class GameNotifier extends Notifier<GameState> {
           mental: mental.clamp(0, 100),
           feverActive: feverActive,
           feverTimer: feverTimer,
+          detectorActive: false,
+          detectorTimer: 0,
+          freezeActive: false,
+          freezeTimer: 0,
+          boostActive: false,
+          boostTimer: 0,
+          clearActiveEvent: true,
+          eventTimer: 0,
         );
         return;
       }
@@ -76,6 +153,15 @@ class GameNotifier extends Notifier<GameState> {
         mental: mental,
         feverActive: feverActive,
         feverTimer: feverTimer,
+        detectorActive: detectorActive,
+        detectorTimer: detectorTimer,
+        freezeActive: freezeActive,
+        freezeTimer: freezeTimer,
+        boostActive: boostActive,
+        boostTimer: boostTimer,
+        activeEvent: activeEvent,
+        clearActiveEvent: clearActiveEvent,
+        eventTimer: eventTimer,
       );
     });
   }
@@ -87,9 +173,15 @@ class GameNotifier extends Notifier<GameState> {
     if (phase == null || state.status != GameStatus.playing) return;
 
     final modifier = _balance.getCelebModifier(state.celebType);
-    final interval =
+
+    // Apply event speed multiplier override if active
+    final eventSpeedMult = state.activeEvent?.speedMultiplier;
+    final baseInterval =
         (phase['interval'] as num).toDouble() *
         (modifier['speed_multiplier'] as num).toDouble();
+    final interval = eventSpeedMult != null
+        ? baseInterval * eventSpeedMult
+        : baseInterval;
 
     _commentTimer = Timer(Duration(milliseconds: (interval * 1000).toInt()), () {
       if (state.status != GameStatus.playing) return;
@@ -99,9 +191,14 @@ class GameNotifier extends Notifier<GameState> {
       if (phase == null) return;
 
       final modifier = _balance.getCelebModifier(state.celebType);
+
+      // Apply event toxic ratio override if active
+      final toxicRatio = state.activeEvent?.toxicRatioOverride ??
+          (phase['toxic_ratio'] as num).toDouble();
+
       final comment = commentService.pickComment(
         pool: _comments,
-        toxicRatio: (phase['toxic_ratio'] as num).toDouble(),
+        toxicRatio: toxicRatio,
         maxDifficulty: phase['max_difficulty'] as int,
         difficultyOffset: (modifier['difficulty_offset'] as num).toInt(),
       );
@@ -144,9 +241,7 @@ class GameNotifier extends Notifier<GameState> {
     final likesBonus = likes * _balance.likesBonusMultiplier;
     final multiplier = _balance.getComboMultiplier(newCombo);
     final boostMult =
-        (state.items['boost'] ?? 0) > 0 && _isBoostActive()
-            ? _balance.boostMultiplier
-            : 1;
+        _isBoostActive() ? _balance.boostMultiplier : 1;
     final points = ((base + likesBonus) * multiplier * boostMult).toInt();
 
     var mental = state.mental;
@@ -201,14 +296,38 @@ class GameNotifier extends Notifier<GameState> {
     );
   }
 
-  bool _isBoostActive() => false; // TODO: implement boost timing
+  bool _isBoostActive() => state.boostActive;
 
   void useItem(String itemName) {
     final items = Map<String, int>.from(state.items);
     if ((items[itemName] ?? 0) <= 0) return;
     items[itemName] = items[itemName]! - 1;
-    state = state.copyWith(items: items);
-    // TODO: implement item effects per type
+
+    switch (itemName) {
+      case 'detector':
+        state = state.copyWith(
+          items: items,
+          detectorActive: true,
+          detectorTimer: _balance.detectorDuration,
+        );
+      case 'freeze':
+        state = state.copyWith(
+          items: items,
+          freezeActive: true,
+          freezeTimer: _balance.freezeDuration,
+        );
+      case 'boost':
+        state = state.copyWith(
+          items: items,
+          boostActive: true,
+          boostTimer: _balance.boostDuration,
+        );
+      case 'shield':
+        // Shield is consumed passively in _handleWrong; just decrement count.
+        state = state.copyWith(items: items);
+      default:
+        state = state.copyWith(items: items);
+    }
   }
 
   void togglePause() {

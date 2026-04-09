@@ -38,9 +38,11 @@
   },
   "items": {
     "detector_per_game": 3,
+    "detector_duration_seconds": 5,
     "freeze_per_game": 1,
     "freeze_duration_seconds": 5,
     "boost_per_game": 2,
+    "boost_duration_seconds": 8,
     "boost_multiplier": 3,
     "shield_per_game": 1
   }

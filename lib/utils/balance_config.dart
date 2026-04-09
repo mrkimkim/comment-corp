@@ -53,10 +53,14 @@ class BalanceConfig {
 
   // Items
   int get detectorPerGame => _data['items']['detector_per_game'] as int;
+  double get detectorDuration =>
+      (_data['items']['detector_duration_seconds'] as num).toDouble();
   int get freezePerGame => _data['items']['freeze_per_game'] as int;
   double get freezeDuration =>
       (_data['items']['freeze_duration_seconds'] as num).toDouble();
   int get boostPerGame => _data['items']['boost_per_game'] as int;
+  double get boostDuration =>
+      (_data['items']['boost_duration_seconds'] as num).toDouble();
   int get boostMultiplier => _data['items']['boost_multiplier'] as int;
   int get shieldPerGame => _data['items']['shield_per_game'] as int;
 
@@ -120,9 +124,11 @@ class BalanceConfig {
     },
     'items': {
       'detector_per_game': 3,
+      'detector_duration_seconds': 5,
       'freeze_per_game': 1,
       'freeze_duration_seconds': 5,
       'boost_per_game': 2,
+      'boost_duration_seconds': 8,
       'boost_multiplier': 3,
       'shield_per_game': 1,
     },
