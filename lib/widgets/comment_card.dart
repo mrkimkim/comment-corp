@@ -152,8 +152,9 @@ class CommentCard extends StatelessWidget {
       Colors.yellow[700]!,
       Colors.orange,
       AppColors.wrong,
+      const Color(0xFF8B0000),
     ];
-    final color = colors[(comment.difficulty - 1).clamp(0, 3)];
+    final color = colors[(comment.difficulty - 1).clamp(0, 4)];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(

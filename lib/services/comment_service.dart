@@ -35,7 +35,7 @@ class CommentService {
 
     // For each phase, pick comments matching that phase's difficulty/toxic ratio
     for (final phase in balance.phases) {
-      final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 4);
+      final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 5);
       final toxicRatio = (phase['toxic_ratio'] as num).toDouble();
       final phaseDuration = (phase['end'] as num).toDouble() - (phase['start'] as num).toDouble();
       final interval = (phase['interval'] as num).toDouble() *
