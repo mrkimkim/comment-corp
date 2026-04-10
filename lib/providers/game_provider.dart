@@ -48,7 +48,12 @@ class GameNotifier extends Notifier<GameState> {
     );
 
     _startTimers();
-    _serveNextComment();
+
+    // Serve first comment inline (previously _serveNextComment)
+    if (_commentQueue.isNotEmpty) {
+      state = state.copyWith(currentComment: _commentQueue[_queueIndex]);
+      _queueIndex++;
+    }
   }
 
   void _startTimers() {
@@ -100,11 +105,13 @@ class GameNotifier extends Notifier<GameState> {
       }
 
       // --- Check for new event trigger (only if no event active) ---
+      String? lastEvent;
       if (activeEvent == null && !clearActiveEvent) {
         final newEvent = _eventService.checkTrigger(elapsed, state.celebType);
         if (newEvent != null) {
           activeEvent = newEvent;
           eventTimer = newEvent.durationSeconds;
+          lastEvent = newEvent.name;
         }
       }
 
@@ -150,19 +157,9 @@ class GameNotifier extends Notifier<GameState> {
         activeEvent: activeEvent,
         clearActiveEvent: clearActiveEvent,
         eventTimer: eventTimer,
+        lastEvent: lastEvent,
       );
     });
-  }
-
-  void _serveNextComment() {
-    if (state.status != GameStatus.playing) return;
-    if (_queueIndex >= _commentQueue.length) {
-      // Queue exhausted — loop back (shouldn't happen in normal play)
-      _queueIndex = 0;
-    }
-    final comment = _commentQueue[_queueIndex];
-    _queueIndex++;
-    state = state.copyWith(currentComment: comment);
   }
 
   void swipe({required bool approve}) {
@@ -302,18 +299,9 @@ class GameNotifier extends Notifier<GameState> {
     }
   }
 
-  void togglePause() {
-    if (state.status == GameStatus.playing) {
-      _gameTimer?.cancel();
-      state = state.copyWith(status: GameStatus.paused);
-    } else if (state.status == GameStatus.paused) {
-      _startTimers();
-      state = state.copyWith(status: GameStatus.playing);
-    }
-  }
-
   void _stopTimers() {
     _gameTimer?.cancel();
+    _queueIndex = 0;
   }
 
   void reset() {

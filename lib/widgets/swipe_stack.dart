@@ -42,7 +42,7 @@ class _SwipeStackState extends State<SwipeStack>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 150),
     );
     _animOffset = Tween<Offset>(
       begin: Offset.zero,
@@ -52,12 +52,12 @@ class _SwipeStackState extends State<SwipeStack>
       curve: Curves.easeOut,
     ));
 
-    // Entry animation: 200ms slide-up with slight bounce
+    // Entry animation: 250ms slide-up with slight bounce
     _entryController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 250),
     );
-    _entrySlide = Tween<double>(begin: 60.0, end: 0.0).animate(
+    _entrySlide = Tween<double>(begin: 40.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _entryController,
         curve: Curves.easeOutBack, // slight bounce overshoot
@@ -95,10 +95,12 @@ class _SwipeStackState extends State<SwipeStack>
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    if (_animController.isAnimating) return;
     setState(() => _dragX += details.delta.dx);
   }
 
   void _onPanEnd(DragEndDetails details) {
+    if (_animController.isAnimating) return;
     final threshold = _swipeThreshold;
     if (_dragX.abs() >= threshold) {
       final approve = _dragX > 0;
@@ -134,7 +136,7 @@ class _SwipeStackState extends State<SwipeStack>
   Widget build(BuildContext context) {
     if (widget.comment == null) {
       return const Center(
-        child: Text('댓글 준비 중...', style: TextStyle(color: Colors.grey)),
+        child: CircularProgressIndicator.adaptive(),
       );
     }
 

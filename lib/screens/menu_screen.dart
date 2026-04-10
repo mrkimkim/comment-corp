@@ -7,11 +7,16 @@ class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
   static const _celebTypes = [
-    ('idol', '아이돌', Icons.star, AppColors.idol, 'Easy'),
-    ('actor', '배우', Icons.movie, AppColors.actor, 'Normal'),
-    ('youtuber', '유튜버', Icons.play_circle, AppColors.youtuber, 'Normal'),
-    ('sports', '스포츠', Icons.sports_soccer, AppColors.sports, 'Normal'),
-    ('politician', '정치인', Icons.account_balance, AppColors.politician, 'Hard'),
+    ('idol', '아이돌', Icons.star, AppColors.idol, 'Easy',
+        'K-POP 아이돌의 댓글을 관리하세요'),
+    ('actor', '배우', Icons.movie, AppColors.actor, 'Normal',
+        '영화/드라마 배우의 댓글을 관리하세요'),
+    ('youtuber', '유튜버', Icons.play_circle, AppColors.youtuber, 'Normal',
+        '유튜버/스트리머의 댓글을 관리하세요'),
+    ('sports', '스포츠', Icons.sports_soccer, AppColors.sports, 'Normal',
+        '스포츠 선수의 댓글을 관리하세요'),
+    ('politician', '정치인', Icons.account_balance, AppColors.politician, 'Hard',
+        '정치인의 댓글을 관리하세요'),
   ];
 
   static const _difficultyColors = {
@@ -25,7 +30,7 @@ class MenuScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
@@ -50,33 +55,34 @@ class MenuScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
+              _buildHowToPlay(),
+              const SizedBox(height: 28),
               const Text(
                 '셀럽 타입을 선택하세요',
                 style: AppTextStyles.bodySmall,
               ),
               const SizedBox(height: 16),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _celebTypes.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final (type, label, icon, color, difficulty) =
-                        _celebTypes[index];
-                    return _CelebButton(
-                      type: type,
-                      label: label,
-                      icon: icon,
-                      color: color,
-                      difficulty: difficulty,
-                      difficultyColor:
-                          _difficultyColors[difficulty] ?? AppColors.textHint,
-                      onTap: () => _startGame(context, type),
-                    );
-                  },
-                ),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _celebTypes.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final (type, label, icon, color, difficulty, description) =
+                      _celebTypes[index];
+                  return _CelebButton(
+                    type: type,
+                    label: label,
+                    icon: icon,
+                    color: color,
+                    difficulty: difficulty,
+                    difficultyColor:
+                        _difficultyColors[difficulty] ?? AppColors.textHint,
+                    description: description,
+                    onTap: () => _startGame(context, type),
+                  );
+                },
               ),
-              const SizedBox(height: 16),
-              _buildHowToPlay(),
               const SizedBox(height: 24),
             ],
           ),
@@ -88,34 +94,52 @@ class MenuScreen extends StatelessWidget {
   Widget _buildHowToPlay() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
         color: AppColors.secondary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.secondary.withValues(alpha: 0.2),
+          color: AppColors.secondary.withValues(alpha: 0.25),
+          width: 1.5,
         ),
       ),
       child: Column(
         children: [
-          Text(
-            'How to Play',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.secondary,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.help_outline_rounded,
+                  size: 22, color: AppColors.secondary),
+              const SizedBox(width: 8),
+              Text(
+                'How to Play',
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: AppColors.secondary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Row(
+              Column(
                 children: [
-                  Icon(Icons.arrow_back, size: 18, color: AppColors.wrong),
-                  const SizedBox(width: 6),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.wrong.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.swipe_left_rounded,
+                        size: 28, color: AppColors.wrong),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     '좌 = 차단',
-                    style: AppTextStyles.label.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.wrong,
                       fontWeight: FontWeight.w700,
                     ),
@@ -124,20 +148,29 @@ class MenuScreen extends StatelessWidget {
               ),
               Container(
                 width: 1,
-                height: 20,
-                color: AppColors.textHint.withValues(alpha: 0.3),
+                height: 56,
+                color: AppColors.textHint.withValues(alpha: 0.25),
               ),
-              Row(
+              Column(
                 children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.correct.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.swipe_right_rounded,
+                        size: 28, color: AppColors.correct),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     '우 = 승인',
-                    style: AppTextStyles.label.copyWith(
+                    style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.correct,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(Icons.arrow_forward, size: 18, color: AppColors.correct),
                 ],
               ),
             ],
@@ -163,6 +196,7 @@ class _CelebButton extends StatelessWidget {
   final Color color;
   final String difficulty;
   final Color difficultyColor;
+  final String description;
   final VoidCallback onTap;
 
   const _CelebButton({
@@ -172,6 +206,7 @@ class _CelebButton extends StatelessWidget {
     required this.color,
     required this.difficulty,
     required this.difficultyColor,
+    required this.description,
     required this.onTap,
   });
 
@@ -202,28 +237,36 @@ class _CelebButton extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: AppTextStyles.bodyLarge),
+                    Row(
+                      children: [
+                        Text(label, style: AppTextStyles.bodyLarge),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: difficultyColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            difficulty,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: difficultyColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      type.toUpperCase(),
-                      style: AppTextStyles.label,
+                      description,
+                      style: AppTextStyles.label.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: difficultyColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  difficulty,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: difficultyColor,
-                  ),
                 ),
               ),
               const SizedBox(width: 8),

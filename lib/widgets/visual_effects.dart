@@ -5,6 +5,19 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 // =============================================================================
+// Visual-effects-only palette (game_screen 통합 전까지 여기서만 사용)
+// =============================================================================
+const Color _comboAmber = Color(0xFFFFA000);
+const Color _comboOrange = Color(0xFFFF8C42);
+const Color _comboRed = Color(0xFFE74C3C);
+const Color _feverGold = Color(0xFFFFD700);
+const Color _feverOrange = Color(0xFFFF9800);
+const Color _dangerRed = Color(0xFFE74C3C);
+const Color _vignetteDark = Color(0xFF1A1A1A);
+const Color _phaseBannerBg = Color(0xCC000000);
+const Color _eventBannerBg = Color(0xFF2D3436);
+
+// =============================================================================
 // 1. FloatingScoreText
 // =============================================================================
 
@@ -12,6 +25,17 @@ import '../constants/app_colors.dart';
 ///
 /// Usage: place inside a Stack at the desired position. The widget removes
 /// itself visually after [duration] by becoming fully transparent.
+///
+/// ```dart
+/// // game_screen 의 Stack 안에서 사용:
+/// FloatingScoreText(
+///   score: '+150',
+///   color: AppColors.correct,
+///   combo: currentCombo,
+///   position: Offset(tapX, tapY),
+///   onComplete: () => setState(() => _floatingTexts.remove(key)),
+/// )
+/// ```
 ///
 /// * [score]  – the score string to display, e.g. "+150".
 /// * [color]  – text color, defaults to [AppColors.correct].
@@ -126,6 +150,14 @@ class _FloatingScoreTextState extends State<FloatingScoreText>
 
 /// Shows combo count with 5-level visual escalation.
 ///
+/// ```dart
+/// // game_screen HUD 영역에 배치:
+/// ComboIndicator(
+///   combo: game.combo,
+///   feverActive: game.isFever,
+/// )
+/// ```
+///
 /// * 0..4  — grey text, no effects.
 /// * 5..9  — amber text + subtle pulse.
 /// * 10..14 — orange + strong pulse + size increase.
@@ -198,26 +230,26 @@ class _ComboIndicatorState extends State<ComboIndicator>
           case _ComboLevel.warmup:
             textColor = Colors.white;
             bgColor = Color.lerp(
-                AppColors.comboAmber,
-                AppColors.comboAmber.withValues(alpha: 0.8),
+                _comboAmber,
+                _comboAmber.withValues(alpha: 0.8),
                 pulse)!;
           case _ComboLevel.heating:
             textColor = Colors.white;
             bgColor = Color.lerp(
-                AppColors.comboOrange,
-                AppColors.comboOrange.withValues(alpha: 0.75),
+                _comboOrange,
+                _comboOrange.withValues(alpha: 0.75),
                 pulse)!;
           case _ComboLevel.preFever:
             textColor = Colors.white;
             bgColor = Color.lerp(
-                AppColors.comboRed,
-                AppColors.comboRed.withValues(alpha: 0.75),
+                _comboRed,
+                _comboRed.withValues(alpha: 0.75),
                 pulse)!;
           case _ComboLevel.fever:
             textColor = Colors.white;
             bgColor = Color.lerp(
-                AppColors.feverOrange,
-                AppColors.feverGold,
+                _feverOrange,
+                _feverGold,
                 pulse)!;
         }
 
@@ -244,7 +276,7 @@ class _ComboIndicatorState extends State<ComboIndicator>
         if (level == _ComboLevel.preFever) {
           shadows = [
             BoxShadow(
-              color: AppColors.comboRed.withValues(alpha: 0.3 + pulse * 0.3),
+              color: _comboRed.withValues(alpha: 0.3 + pulse * 0.3),
               blurRadius: 8 + pulse * 6,
               spreadRadius: 1,
             ),
@@ -252,7 +284,7 @@ class _ComboIndicatorState extends State<ComboIndicator>
         } else if (level == _ComboLevel.fever) {
           shadows = [
             BoxShadow(
-              color: AppColors.feverGold.withValues(alpha: 0.4 + pulse * 0.3),
+              color: _feverGold.withValues(alpha: 0.4 + pulse * 0.3),
               blurRadius: 10 + pulse * 8,
               spreadRadius: 2,
             ),
@@ -307,6 +339,13 @@ enum _ComboLevel { base, warmup, heating, preFever, fever }
 // =============================================================================
 
 /// Full-screen overlay for fever mode.
+///
+/// ```dart
+/// // game_screen 의 Stack 최상단에 배치:
+/// Positioned.fill(
+///   child: FeverOverlay(feverActive: game.isFever),
+/// )
+/// ```
 ///
 /// * On enter  — golden flash (300 ms).
 /// * While active — pulsing golden border glow.
@@ -408,7 +447,7 @@ class _FeverOverlayState extends State<FeverOverlay>
                 return const SizedBox.shrink();
               }
               return Container(
-                color: AppColors.feverGold
+                color: _feverGold
                     .withValues(alpha: _flashOpacity.value),
               );
             },
@@ -425,12 +464,12 @@ class _FeverOverlayState extends State<FeverOverlay>
                 return Container(
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: AppColors.feverGold.withValues(alpha: opacity + 0.15),
+                      color: _feverGold.withValues(alpha: opacity + 0.15),
                       width: 3,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.feverGold.withValues(alpha: opacity),
+                        color: _feverGold.withValues(alpha: opacity),
                         blurRadius: spread,
                         spreadRadius: 2,
                       ),
@@ -450,6 +489,15 @@ class _FeverOverlayState extends State<FeverOverlay>
 // =============================================================================
 
 /// Multi-stage mental health warning overlay.
+///
+/// ```dart
+/// // game_screen 의 Stack 최상단(FeverOverlay 위 또는 아래):
+/// Positioned.fill(
+///   child: MentalWarning(
+///     mentalPercent: game.mentalHp / game.maxMentalHp,
+///   ),
+/// )
+/// ```
 ///
 /// * > 50 %   — nothing.
 /// * <= 50 %  — vignette 10 %.
@@ -536,7 +584,7 @@ class _MentalWarningState extends State<MentalWarning>
                     radius: 1.0,
                     colors: [
                       Colors.transparent,
-                      AppColors.vignetteDark
+                      _vignetteDark
                           .withValues(alpha: vignetteOpacity),
                     ],
                     stops: const [0.5, 1.0],
@@ -549,7 +597,7 @@ class _MentalWarningState extends State<MentalWarning>
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: AppColors.dangerRed
+                      color: _dangerRed
                           .withValues(alpha: borderOpacity),
                       width: borderWidth,
                     ),
@@ -582,6 +630,17 @@ class _MentalWarningState extends State<MentalWarning>
 
 /// Shows a phase name (e.g. "PHASE 2") via scale-in, hold for 1 s, then
 /// fade-out.
+///
+/// ```dart
+/// // game_screen 에서 페이즈 전환 시 Stack 에 추가:
+/// if (showPhaseBanner)
+///   Positioned.fill(
+///     child: PhaseTransitionBanner(
+///       phase: 'PHASE 2',
+///       onComplete: () => setState(() => showPhaseBanner = false),
+///     ),
+///   )
+/// ```
 ///
 /// Set [phase] to trigger the animation. The widget auto-hides once complete.
 /// [onComplete] fires when fully done.
@@ -668,7 +727,7 @@ class _PhaseTransitionBannerState extends State<PhaseTransitionBanner>
         builder: (context, _) {
           if (_opacity.value <= 0.001) return const SizedBox.shrink();
           return Container(
-            color: AppColors.phaseBannerBg
+            color: _phaseBannerBg
                 .withValues(alpha: 0.5 * _opacity.value),
             child: Center(
               child: Opacity(
@@ -679,7 +738,7 @@ class _PhaseTransitionBannerState extends State<PhaseTransitionBanner>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 32, vertical: 16),
                     decoration: BoxDecoration(
-                      color: AppColors.phaseBannerBg,
+                      color: _phaseBannerBg,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -708,7 +767,17 @@ class _PhaseTransitionBannerState extends State<PhaseTransitionBanner>
 
 /// Slides down from the top, stays for 2 s, then slides back up.
 ///
-/// * [eventName]  – e.g. "🔥 실검 등장"
+/// ```dart
+/// // game_screen Stack 최상단에서 이벤트 발생 시:
+/// if (pendingEvent != null)
+///   EventNotification(
+///     eventName: pendingEvent!.name,
+///     eventDescription: pendingEvent!.description,
+///     onDismissed: () => setState(() => pendingEvent = null),
+///   )
+/// ```
+///
+/// * [eventName]  – e.g. "실검 등장"
 /// * [eventDescription] – e.g. "속도 UP!"
 /// * [onDismissed] – fires when fully hidden.
 class EventNotification extends StatefulWidget {
@@ -814,7 +883,7 @@ class _EventNotificationState extends State<EventNotification>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.eventBannerBg,
+                    color: _eventBannerBg,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(

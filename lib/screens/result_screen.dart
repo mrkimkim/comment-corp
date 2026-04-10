@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../providers/game_provider.dart';
+import 'game_screen.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({super.key});
@@ -130,7 +131,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
 
     // If S-grade, start shimmer loop
     final (grade, _) = _getGrade(_finalScore);
-    if (grade == 'S') {
+    if (grade == 'S' && mounted) {
       _shimmerController.repeat();
     }
 
@@ -200,10 +201,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
     final game = ref.watch(gameProvider);
     final (grade, gradeColor) = _getGrade(_finalScore);
 
+    // Cache celebType for replay button.
+    final celebType = game.celebType;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
@@ -265,7 +269,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                 statSlide: _statSlide,
               ),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
               // --- Buttons with delayed fade-in ---
               FadeTransition(
@@ -278,8 +282,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                       child: ElevatedButton(
                         onPressed: () {
                           ref.read(gameProvider.notifier).reset();
-                          Navigator.of(context)
-                              .popUntil((route) => route.isFirst);
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  GameScreen(celebType: celebType),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -528,7 +536,7 @@ class _AnimatedScoreCard extends StatelessWidget {
             animation: scoreAnimation,
             builder: (context, child) {
               return Text(
-                '${scoreAnimation.value}',
+                _formatNumber(scoreAnimation.value),
                 style: AppTextStyles.scoreDisplay,
               );
             },

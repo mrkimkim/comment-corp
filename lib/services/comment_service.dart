@@ -50,16 +50,23 @@ class CommentService {
         // Decide toxic or positive
         final wantToxic = _random.nextDouble() < toxicRatio;
 
-        // Find a comment that hasn't been used yet
-        var picked = eligible.cast<Comment?>().firstWhere(
-          (c) => !used.contains(c!.id) && c.isToxic == wantToxic,
-          orElse: () => null,
-        );
+        // Find a comment that hasn't been used yet and matches toxicity
+        Comment? picked;
+        for (final c in eligible) {
+          if (!used.contains(c.id) && c.isToxic == wantToxic) {
+            picked = c;
+            break;
+          }
+        }
         // Fallback: any unused comment
-        picked ??= eligible.cast<Comment?>().firstWhere(
-          (c) => !used.contains(c!.id),
-          orElse: () => null,
-        );
+        if (picked == null) {
+          for (final c in eligible) {
+            if (!used.contains(c.id)) {
+              picked = c;
+              break;
+            }
+          }
+        }
         // If all exhausted, reshuffle and allow repeats
         if (picked == null) {
           used.clear();

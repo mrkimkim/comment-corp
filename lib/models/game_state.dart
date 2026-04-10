@@ -1,6 +1,6 @@
 import 'comment.dart';
 
-enum GameStatus { ready, playing, paused, gameOver }
+enum GameStatus { ready, playing, gameOver }
 
 enum SwipeResult { correctBlock, correctApprove, wrongBlock, wrongApprove }
 
@@ -50,6 +50,9 @@ class GameState {
   final GameEvent? activeEvent;
   final double eventTimer;
 
+  /// Name of the most recently triggered event (for UI notification).
+  final String? lastEvent;
+
   const GameState({
     this.status = GameStatus.ready,
     this.celebType = 'idol',
@@ -74,6 +77,7 @@ class GameState {
     this.boostTimer = 0,
     this.activeEvent,
     this.eventTimer = 0,
+    this.lastEvent,
   });
 
   bool get isDead => mental <= 0;
@@ -106,6 +110,8 @@ class GameState {
     GameEvent? activeEvent,
     double? eventTimer,
     bool clearActiveEvent = false,
+    String? lastEvent,
+    bool clearLastEvent = false,
   }) {
     return GameState(
       status: status ?? this.status,
@@ -131,6 +137,7 @@ class GameState {
       boostTimer: boostTimer ?? this.boostTimer,
       activeEvent: clearActiveEvent ? null : (activeEvent ?? this.activeEvent),
       eventTimer: eventTimer ?? this.eventTimer,
+      lastEvent: clearLastEvent ? null : (lastEvent ?? this.lastEvent),
     );
   }
 }

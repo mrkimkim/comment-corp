@@ -18,12 +18,6 @@ class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
-  static const TextStyle heading3 = TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.w900,
-    color: AppColors.textPrimary,
-  );
-
   // Body
   static const TextStyle bodyLarge = TextStyle(
     fontSize: 18,
@@ -50,13 +44,9 @@ class AppTextStyles {
     color: AppColors.textSecondary,
   );
 
-  static const TextStyle labelSmall = TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-    color: AppColors.textHint,
-  );
-
   // Score
+  // NOTE: 점수 표시 시 NumberFormat('#,###')으로 쉼표 포맷 적용 필요.
+  // 예: intl 패키지의 NumberFormat 또는 수동 포맷 유틸 사용.
   static const TextStyle scoreDisplay = TextStyle(
     fontSize: 48,
     fontWeight: FontWeight.w900,

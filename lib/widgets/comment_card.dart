@@ -17,11 +17,35 @@ class CommentCard extends StatelessWidget {
     this.detectorActive = false,
   });
 
-  // Stable random nickname based on comment id
+  // 한국어 닉네임 풀 — comment id 기반으로 결정적 선택
+  static const _nicknamePool = [
+    '댓글러',
+    '지나가던사람',
+    'ㅇㅇ',
+    '순수한팬',
+    '사이다좋아',
+    '찐팬임',
+    '궁금한사람',
+    '조용한독자',
+    '해바라기',
+    '밤하늘별',
+    '댓글요정',
+    '솔직한사람',
+    '웃음가득',
+    '눈팅족',
+    '열정맨',
+    '무념무상',
+    '커피한잔',
+    '바다소리',
+    '하루하루',
+    '소소한행복',
+  ];
+
   String get _nickname {
     final hash = comment.id.hashCode.abs();
-    final number = hash % 9000 + 1000;
-    return '익명_$number';
+    final name = _nicknamePool[hash % _nicknamePool.length];
+    final suffix = hash % 1000;
+    return '$name$suffix';
   }
 
   @override
@@ -34,8 +58,8 @@ class CommentCard extends StatelessWidget {
       child: Transform.rotate(
         angle: ratio * 0.15,
         child: Container(
-          width: screenWidth * 0.85,
-          padding: const EdgeInsets.all(20),
+          width: screenWidth * 0.90,
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: _cardColor(ratio),
             borderRadius: BorderRadius.circular(16),
@@ -51,8 +75,8 @@ class CommentCard extends StatelessWidget {
                     ? (comment.isToxic
                         ? Colors.red.withValues(alpha: 0.3)
                         : AppColors.correct.withValues(alpha: 0.3))
-                    : Colors.black.withValues(alpha: 0.1),
-                blurRadius: detectorActive ? 15 : 10,
+                    : Colors.black.withValues(alpha: 0.06),
+                blurRadius: detectorActive ? 15 : 16,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -147,10 +171,6 @@ class CommentCard extends StatelessWidget {
                       color: Colors.grey[500],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  _difficultyBadge(),
-                  const SizedBox(width: 8),
-                  _likesWidget(),
                 ],
               ),
             ],
@@ -170,50 +190,5 @@ class CommentCard extends StatelessWidget {
           Colors.white, Colors.green[50]!, min(ratio, 1.0))!;
     }
     return Colors.white;
-  }
-
-  Widget _difficultyBadge() {
-    final colors = [
-      AppColors.correct,
-      Colors.yellow[700]!,
-      Colors.orange,
-      AppColors.wrong,
-      const Color(0xFF8B0000),
-    ];
-    final color = colors[(comment.difficulty - 1).clamp(0, 4)];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        'Lv.${comment.difficulty}',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _likesWidget() {
-    final avg = ((comment.likesMin + comment.likesMax) / 2).toInt();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.favorite, size: 12, color: AppColors.primary),
-        const SizedBox(width: 3),
-        Text(
-          '$avg',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
   }
 }

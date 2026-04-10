@@ -6,6 +6,7 @@ import '../models/game_state.dart';
 /// Loads and manages game events from events.json.
 class EventService {
   List<Map<String, dynamic>> _events = [];
+  bool _loaded = false;
   final _random = Random();
 
   /// Event trigger times: around 30s, 60s, 90s (with +/- 5s jitter).
@@ -13,6 +14,10 @@ class EventService {
   int _nextTriggerIndex = 0;
 
   Future<void> load() async {
+    if (_loaded) {
+      _generateTriggerTimes();
+      return;
+    }
     try {
       final jsonStr = await rootBundle.loadString('data/events/events.json');
       final data = json.decode(jsonStr) as Map<String, dynamic>;
@@ -20,6 +25,7 @@ class EventService {
     } catch (_) {
       _events = [];
     }
+    _loaded = true;
     _generateTriggerTimes();
   }
 
@@ -44,15 +50,17 @@ class EventService {
     if (_nextTriggerIndex >= _triggerTimes.length) return null;
     if (elapsed < _triggerTimes[_nextTriggerIndex]) return null;
 
-    _nextTriggerIndex++;
-
     // Filter events that apply to this celeb type or "all"
     final applicable = _events.where((e) {
       final appliesTo = List<String>.from(e['applies_to'] as List);
       return appliesTo.contains('all') || appliesTo.contains(celebType);
     }).toList();
 
+    // Don't consume the trigger if there are no applicable events
+    // so it can be retried on the next check.
     if (applicable.isEmpty) return null;
+
+    _nextTriggerIndex++;
 
     final chosen = applicable[_random.nextInt(applicable.length)];
     return GameEvent(

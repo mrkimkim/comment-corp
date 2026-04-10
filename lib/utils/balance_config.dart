@@ -9,8 +9,8 @@ class BalanceConfig {
   static BalanceConfig? _instance;
   static final BalanceConfig fallback = BalanceConfig(_defaultBalance);
 
-  static Future<BalanceConfig> load() async {
-    if (_instance != null) return _instance!;
+  static Future<BalanceConfig> load({bool forceReload = false}) async {
+    if (_instance != null && !forceReload) return _instance!;
     try {
       final jsonStr = await rootBundle.loadString('data/balance/balance.json');
       _instance = BalanceConfig(json.decode(jsonStr) as Map<String, dynamic>);
@@ -18,6 +18,12 @@ class BalanceConfig {
       _instance = fallback;
     }
     return _instance!;
+  }
+
+  /// Clears the cached instance so the next [load] re-reads balance.json.
+  /// Useful after hot-reload or when the JSON changes at runtime.
+  static void invalidateCache() {
+    _instance = null;
   }
 
   // Mental
@@ -53,8 +59,6 @@ class BalanceConfig {
 
   // Items
   int get detectorPerGame => _data['items']['detector_per_game'] as int;
-  double get detectorDuration =>
-      (_data['items']['detector_duration_seconds'] as num).toDouble();
   int get freezePerGame => _data['items']['freeze_per_game'] as int;
   double get freezeDuration =>
       (_data['items']['freeze_duration_seconds'] as num).toDouble();
