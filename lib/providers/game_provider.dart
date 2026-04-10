@@ -115,9 +115,8 @@ class GameNotifier extends Notifier<GameState> {
         }
       }
 
-      // --- Fever heal ---
+      // --- Fever timer tick (no heal) ---
       if (feverActive) {
-        mental = (mental + _balance.feverHealPerSecond * 0.1).clamp(0, 100);
         feverTimer -= 0.1;
         if (feverTimer <= 0) {
           feverActive = false;
