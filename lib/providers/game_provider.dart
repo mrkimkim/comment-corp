@@ -175,22 +175,27 @@ class GameNotifier extends Notifier<GameState> {
     final isCorrect =
         (comment.isToxic && !approve) || (!comment.isToxic && approve);
 
-    if (isCorrect) {
-      _handleCorrect(comment, likes);
+    // Compute next comment from queue
+    Comment? nextComment;
+    if (_queueIndex < _commentQueue.length) {
+      nextComment = _commentQueue[_queueIndex];
+      _queueIndex++;
     } else {
-      _handleWrong(comment, likes, approve);
+      _queueIndex = 0;
+      if (_commentQueue.isNotEmpty) {
+        nextComment = _commentQueue[_queueIndex];
+        _queueIndex++;
+      }
     }
 
-    state = state.copyWith(
-      totalProcessed: state.totalProcessed + 1,
-      detectorActive: false, // detector는 1회성 — 스와이프하면 꺼짐
-    );
-
-    // Immediately serve next comment — no timer delay
-    _serveNextComment();
+    if (isCorrect) {
+      _applyCorrect(comment, likes, nextComment);
+    } else {
+      _applyWrong(comment, likes, approve, nextComment);
+    }
   }
 
-  void _handleCorrect(Comment comment, int likes) {
+  void _applyCorrect(Comment comment, int likes, Comment? nextComment) {
     final newCombo = state.combo + 1;
     final maxCombo =
         newCombo > state.maxCombo ? newCombo : state.maxCombo;
@@ -216,21 +221,25 @@ class GameNotifier extends Notifier<GameState> {
       feverTimer = _balance.feverDuration;
     }
 
+    // Single state update — no flicker
     state = state.copyWith(
       score: state.score + points,
       combo: newCombo,
       maxCombo: maxCombo,
       correctCount: state.correctCount + 1,
+      totalProcessed: state.totalProcessed + 1,
       mental: mental,
       feverActive: feverActive,
       feverTimer: feverTimer,
+      detectorActive: false,
+      currentComment: nextComment,
       lastResult: comment.isToxic
           ? SwipeResult.correctBlock
           : SwipeResult.correctApprove,
     );
   }
 
-  void _handleWrong(Comment comment, int likes, bool approved) {
+  void _applyWrong(Comment comment, int likes, bool approved, Comment? nextComment) {
     var mental = state.mental;
 
     if (comment.isToxic && approved) {
@@ -239,10 +248,14 @@ class GameNotifier extends Notifier<GameState> {
       mental -= damage;
     }
 
+    // Single state update — no flicker
     state = state.copyWith(
       combo: 0,
       wrongCount: state.wrongCount + 1,
+      totalProcessed: state.totalProcessed + 1,
       mental: mental.clamp(0, 100),
+      detectorActive: false,
+      currentComment: nextComment,
       lastResult: approved
           ? SwipeResult.wrongApprove
           : SwipeResult.wrongBlock,
@@ -278,8 +291,12 @@ class GameNotifier extends Notifier<GameState> {
         );
       case 'skip':
         // 스킵: 현재 댓글을 패스하고 다음으로 (패널티 없음)
-        state = state.copyWith(items: items);
-        _serveNextComment();
+        Comment? nextComment;
+        if (_queueIndex < _commentQueue.length) {
+          nextComment = _commentQueue[_queueIndex];
+          _queueIndex++;
+        }
+        state = state.copyWith(items: items, currentComment: nextComment);
       default:
         state = state.copyWith(items: items);
     }

@@ -121,9 +121,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
     // Step 1: score count-up
     _scoreController.forward();
     await _scoreController.animateTo(1.0);
+    if (!mounted) return;
 
     // Step 2: 300ms pause then grade badge bounce-in
     await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     _gradeController.forward();
 
     // If S-grade, start shimmer loop
@@ -134,6 +136,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
 
     // Step 3: after grade animation finishes, stagger stats
     await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _statsController.forward();
 
     // NEW BEST banner (show right after grade if applicable)
@@ -143,7 +146,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
 
     // Step 4: after all stats revealed, 500ms then buttons
     await _statsController.animateTo(1.0);
+    if (!mounted) return;
     await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _buttonsController.forward();
   }
 

@@ -184,20 +184,24 @@ class _GameScreenState extends ConsumerState<GameScreen>
   @override
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider);
-
-    // Final countdown: trigger center number when <= 5 seconds remain
     final timeRemaining = game.timeRemaining;
-    if (timeRemaining <= 5 && timeRemaining > 0 && game.status == GameStatus.playing) {
-      final second = timeRemaining.ceil();
-      _triggerCenterCountdown(second);
-    }
 
     ref.listen(gameProvider, (prev, next) {
+      if (!mounted) return;
+
       if (prev?.status != GameStatus.gameOver &&
           next.status == GameStatus.gameOver) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ResultScreen()),
         );
+        return;
+      }
+
+      // Final countdown: trigger center number when <= 5 seconds remain
+      if (next.timeRemaining <= 5 && next.timeRemaining > 0 &&
+          next.status == GameStatus.playing) {
+        final second = next.timeRemaining.ceil();
+        _triggerCenterCountdown(second);
       }
 
       // Flash on swipe result
@@ -293,9 +297,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 AnimatedOpacity(
                   opacity: _swipeHintVisible ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 500),
-                  child: _swipeHintVisible
-                      ? _buildSwipeHint()
-                      : const SizedBox.shrink(),
+                  child: _buildSwipeHint(),
                 ),
                 _buildItemBar(game),
                 const SizedBox(height: 16),
@@ -570,6 +572,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
     if (game.boostActive) {
       active.add(('부스트 x3', Icons.bolt, AppColors.accent, game.boostTimer));
     }
+
+    if (active.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
