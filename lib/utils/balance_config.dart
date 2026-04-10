@@ -46,8 +46,10 @@ class BalanceConfig {
 
   // Timer
   int get totalSeconds => _data['timer']['total_seconds'] as int;
+
+  // Phases (combo-based)
   List<Map<String, dynamic>> get phases =>
-      List<Map<String, dynamic>>.from(_data['timer']['phases'] as List);
+      List<Map<String, dynamic>>.from(_data['phases'] as List);
 
   // Celeb modifiers
   Map<String, dynamic> getCelebModifier(String type) =>
@@ -74,14 +76,28 @@ class BalanceConfig {
     return multiplier;
   }
 
-  Map<String, dynamic>? getPhase(double elapsed) {
+  /// Returns the phase matching the given combo count.
+  /// Phases are sorted by min_combo ascending; the last phase whose
+  /// min_combo <= combo wins.
+  Map<String, dynamic> getPhaseByCombo(int combo) {
+    Map<String, dynamic> matched = phases.first;
     for (final phase in phases) {
-      if (elapsed >= (phase['start'] as num) &&
-          elapsed < (phase['end'] as num)) {
-        return phase;
+      if (combo >= (phase['min_combo'] as int)) {
+        matched = phase;
       }
     }
-    return null;
+    return matched;
+  }
+
+  /// Returns the 1-based phase index for a given combo value.
+  int getPhaseIndex(int combo) {
+    int index = 1;
+    for (var i = 0; i < phases.length; i++) {
+      if (combo >= (phases[i]['min_combo'] as int)) {
+        index = i + 1;
+      }
+    }
+    return index;
   }
 
   static const Map<String, dynamic> _defaultBalance = {
@@ -106,14 +122,14 @@ class BalanceConfig {
     },
     'timer': {
       'total_seconds': 120,
-      'phases': [
-        {'start': 0, 'end': 30, 'interval': 1.5, 'toxic_ratio': 0.30, 'max_difficulty': 1},
-        {'start': 30, 'end': 60, 'interval': 1.5, 'toxic_ratio': 0.40, 'max_difficulty': 2},
-        {'start': 60, 'end': 90, 'interval': 1.0, 'toxic_ratio': 0.50, 'max_difficulty': 3},
-        {'start': 90, 'end': 110, 'interval': 0.7, 'toxic_ratio': 0.55, 'max_difficulty': 4},
-        {'start': 110, 'end': 120, 'interval': 0.6, 'toxic_ratio': 0.60, 'max_difficulty': 5},
-      ],
     },
+    'phases': [
+      {'min_combo': 0, 'toxic_ratio': 0.30, 'max_difficulty': 1, 'interval': 1.5},
+      {'min_combo': 5, 'toxic_ratio': 0.35, 'max_difficulty': 2, 'interval': 1.3},
+      {'min_combo': 10, 'toxic_ratio': 0.40, 'max_difficulty': 3, 'interval': 1.0},
+      {'min_combo': 20, 'toxic_ratio': 0.50, 'max_difficulty': 4, 'interval': 0.7},
+      {'min_combo': 30, 'toxic_ratio': 0.60, 'max_difficulty': 5, 'interval': 0.5},
+    ],
     'celeb_type_modifiers': {
       'idol': {'speed_multiplier': 0.8, 'difficulty_offset': -1},
       'actor': {'speed_multiplier': 1.0, 'difficulty_offset': 1},

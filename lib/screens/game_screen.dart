@@ -124,14 +124,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
     _floatingScoreController.forward(from: 0);
   }
 
-  int _getCurrentPhase(double elapsed) {
-    if (elapsed < 30) return 1;
-    if (elapsed < 60) return 2;
-    if (elapsed < 90) return 3;
-    if (elapsed < 110) return 4;
-    return 5;
-  }
-
   /// Build a short description for an active event based on its effects.
   String _describeEvent(GameEvent event) {
     final parts = <String>[];
@@ -213,14 +205,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
         audio.playSfx(Sfx.feverStart);
       }
 
-      // ── Phase transition detection ──
-      final currentPhase = _getCurrentPhase(next.elapsed);
-      if (currentPhase != _previousPhase && next.status == GameStatus.playing) {
-        setState(() {
-          _previousPhase = currentPhase;
-          _phaseBannerText = 'PHASE $currentPhase';
-          _showPhaseBanner = true;
-        });
+      // ── Phase transition detection (combo-based) ──
+      if (next.currentPhase != _previousPhase && next.status == GameStatus.playing) {
+        // Only show banner when phase goes UP (not on combo-reset drops)
+        if (next.currentPhase > _previousPhase) {
+          setState(() {
+            _phaseBannerText = 'PHASE ${next.currentPhase}';
+            _showPhaseBanner = true;
+          });
+        }
+        _previousPhase = next.currentPhase;
       }
 
       // ── Event notification ──
@@ -351,8 +345,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   // ── Timer bar (full-width, 6px, phase color, pulse on last 10s) ──
 
   Widget _buildTimerBar(GameState game) {
-    final phase = _getCurrentPhase(game.elapsed);
-    final phaseColor = _getPhaseColor(phase);
+    final phaseColor = _getPhaseColor(game.currentPhase);
     final progress = (game.timeRemaining / game.totalSeconds).clamp(0.0, 1.0);
     final isLastTen = game.timeRemaining <= 10;
 

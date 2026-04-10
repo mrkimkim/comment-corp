@@ -19,8 +19,7 @@ final gameProvider = NotifierProvider<GameNotifier, GameState>(GameNotifier.new)
 
 class GameNotifier extends Notifier<GameState> {
   Timer? _gameTimer;
-  List<Comment> _commentQueue = [];
-  int _queueIndex = 0;
+  List<Comment> _commentPool = [];
   late BalanceConfig _balance;
   late EventService _eventService;
 
@@ -30,15 +29,17 @@ class GameNotifier extends Notifier<GameState> {
   Future<void> startGame(String celebType) async {
     _balance = await BalanceConfig.load();
     final commentService = ref.read(commentServiceProvider);
-    final allComments = await commentService.loadComments(celebType);
-
-    // Pre-build shuffled queue — no duplicates until pool exhausted
-    _commentQueue = commentService.buildRoundQueue(allComments, _balance, celebType);
-    _queueIndex = 0;
+    _commentPool = await commentService.loadComments(celebType);
+    commentService.resetTracking();
 
     _eventService = ref.read(eventServiceProvider);
     await _eventService.load();
     _eventService.reset();
+
+    // Pick the first comment for combo 0
+    final firstComment = commentService.pickNextComment(
+      _commentPool, 0, celebType, _balance,
+    );
 
     state = GameState(
       status: GameStatus.playing,
@@ -46,21 +47,17 @@ class GameNotifier extends Notifier<GameState> {
       mental: _balance.mentalInitial,
       mentalMax: _balance.mentalInitial,
       totalSeconds: _balance.totalSeconds,
+      currentPhase: 1,
       items: {
         'detector': _balance.detectorPerGame,
         'freeze': _balance.freezePerGame,
         'boost': _balance.boostPerGame,
         'skip': _balance.shieldPerGame,
       },
+      currentComment: firstComment,
     );
 
     _startTimers();
-
-    // Serve first comment inline (previously _serveNextComment)
-    if (_commentQueue.isNotEmpty) {
-      state = state.copyWith(currentComment: _commentQueue[_queueIndex]);
-      _queueIndex++;
-    }
   }
 
   void _startTimers() {
@@ -151,6 +148,9 @@ class GameNotifier extends Notifier<GameState> {
         return;
       }
 
+      // --- Update current phase based on combo ---
+      final newPhase = _balance.getPhaseIndex(state.combo);
+
       state = state.copyWith(
         elapsed: elapsed,
         mental: mental,
@@ -165,21 +165,19 @@ class GameNotifier extends Notifier<GameState> {
         eventTimer: eventTimer,
         lastEvent: lastEvent,
         clearLastEvent: lastEvent == null,
+        currentPhase: newPhase,
       );
     });
   }
 
-  /// Advance the queue index and return the next comment.
-  /// Recycles to the start when the end is reached.
-  /// Returns null only if the queue is completely empty.
+  /// Pick the next comment based on current combo (dynamic difficulty).
+  /// Returns null only if the comment pool is completely empty.
   Comment? _nextComment() {
-    if (_commentQueue.isEmpty) return null;
-    if (_queueIndex >= _commentQueue.length) {
-      _queueIndex = 0;
-    }
-    final comment = _commentQueue[_queueIndex];
-    _queueIndex++;
-    return comment;
+    if (_commentPool.isEmpty) return null;
+    final commentService = ref.read(commentServiceProvider);
+    return commentService.pickNextComment(
+      _commentPool, state.combo, state.celebType, _balance,
+    );
   }
 
   void swipe({required bool approve}) {
@@ -224,6 +222,9 @@ class GameNotifier extends Notifier<GameState> {
       feverTimer = _balance.feverDuration;
     }
 
+    // Update phase based on new combo
+    final newPhase = _balance.getPhaseIndex(newCombo);
+
     // Single state update — no flicker
     state = state.copyWith(
       score: state.score + points,
@@ -237,6 +238,7 @@ class GameNotifier extends Notifier<GameState> {
       detectorActive: false,
       currentComment: nextComment,
       clearCurrentComment: nextComment == null,
+      currentPhase: newPhase,
       lastResult: comment.isToxic
           ? SwipeResult.correctBlock
           : SwipeResult.correctApprove,
@@ -260,6 +262,7 @@ class GameNotifier extends Notifier<GameState> {
       state = state.copyWith(
         status: GameStatus.gameOver,
         combo: 0,
+        currentPhase: 1,
         wrongCount: state.wrongCount + 1,
         totalProcessed: state.totalProcessed + 1,
         mental: 0,
@@ -273,9 +276,10 @@ class GameNotifier extends Notifier<GameState> {
       return;
     }
 
-    // Single state update — no flicker
+    // Combo reset → Phase 1 (dynamic difficulty drop)
     state = state.copyWith(
       combo: 0,
+      currentPhase: 1,
       wrongCount: state.wrongCount + 1,
       totalProcessed: state.totalProcessed + 1,
       mental: clampedMental,
@@ -330,13 +334,11 @@ class GameNotifier extends Notifier<GameState> {
 
   void _stopTimers() {
     _gameTimer?.cancel();
-    _queueIndex = 0;
   }
 
   void reset() {
     _stopTimers();
-    _commentQueue = [];
-    _queueIndex = 0;
+    _commentPool = [];
     state = const GameState();
   }
 }

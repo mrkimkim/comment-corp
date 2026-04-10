@@ -55,6 +55,9 @@ class GameState {
   /// Name of the most recently triggered event (for UI notification).
   final String? lastEvent;
 
+  /// Current phase (1–5), determined by combo count.
+  final int currentPhase;
+
   const GameState({
     this.status = GameStatus.ready,
     this.celebType = 'idol',
@@ -82,6 +85,7 @@ class GameState {
     this.activeEvent,
     this.eventTimer = 0,
     this.lastEvent,
+    this.currentPhase = 1,
   });
 
   bool get isDead => mental <= 0;
@@ -120,6 +124,7 @@ class GameState {
     bool clearActiveEvent = false,
     String? lastEvent,
     bool clearLastEvent = false,
+    int? currentPhase,
   }) {
     return GameState(
       status: status ?? this.status,
@@ -152,6 +157,7 @@ class GameState {
       activeEvent: clearActiveEvent ? null : (activeEvent ?? this.activeEvent),
       eventTimer: eventTimer ?? this.eventTimer,
       lastEvent: clearLastEvent ? null : (lastEvent ?? this.lastEvent),
+      currentPhase: currentPhase ?? this.currentPhase,
     );
   }
 }

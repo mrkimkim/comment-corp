@@ -25,61 +25,75 @@ class CommentService {
     }
   }
 
-  /// Build a pre-shuffled queue for the entire round.
-  /// Comments are arranged so difficulty ramps up over phases,
-  /// and no comment repeats until the pool is exhausted.
-  List<Comment> buildRoundQueue(List<Comment> pool, BalanceConfig balance, String celebType) {
+  /// Tracks recently used comment IDs to avoid immediate repeats.
+  final Set<String> _recentIds = {};
+
+  /// Pick the next comment based on the current combo-driven phase.
+  ///
+  /// [combo] determines which phase (and thus max_difficulty / toxic_ratio)
+  /// is active. [celebType] applies celeb-specific difficulty offsets.
+  /// [pool] is the full list of comments loaded for this celeb type.
+  Comment pickNextComment(
+    List<Comment> pool,
+    int combo,
+    String celebType,
+    BalanceConfig balance,
+  ) {
+    final phase = balance.getPhaseByCombo(combo);
     final modifier = balance.getCelebModifier(celebType);
     final diffOffset = (modifier['difficulty_offset'] as num).toInt();
-    final queue = <Comment>[];
+    final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 5);
+    final toxicRatio = (phase['toxic_ratio'] as num).toDouble();
 
-    // For each phase, pick comments matching that phase's difficulty/toxic ratio
-    for (final phase in balance.phases) {
-      final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 5);
-      final toxicRatio = (phase['toxic_ratio'] as num).toDouble();
-      final phaseDuration = (phase['end'] as num).toDouble() - (phase['start'] as num).toDouble();
-      final interval = (phase['interval'] as num).toDouble() *
-          (modifier['speed_multiplier'] as num).toDouble();
-      final commentCount = (phaseDuration / interval).ceil();
+    final eligible = pool
+        .where((c) => c.difficulty <= maxDiff && !c.eventOnly)
+        .toList();
 
-      final eligible = pool.where((c) => c.difficulty <= maxDiff).toList()..shuffle(_random);
-
-      // Pick without repeats within phase
-      final used = <String>{};
-      for (var i = 0; i < commentCount; i++) {
-        // Decide toxic or positive
-        final wantToxic = _random.nextDouble() < toxicRatio;
-
-        // Find a comment that hasn't been used yet and matches toxicity
-        Comment? picked;
-        for (final c in eligible) {
-          if (!used.contains(c.id) && c.isToxic == wantToxic) {
-            picked = c;
-            break;
-          }
-        }
-        // Fallback: any unused comment
-        if (picked == null) {
-          for (final c in eligible) {
-            if (!used.contains(c.id)) {
-              picked = c;
-              break;
-            }
-          }
-        }
-        // If all exhausted, reshuffle and allow repeats
-        if (picked == null) {
-          used.clear();
-          eligible.shuffle(_random);
-          picked = eligible.first;
-        }
-
-        used.add(picked.id);
-        queue.add(picked);
-      }
+    if (eligible.isEmpty) {
+      // Absolute fallback — should never happen with well-formed data
+      return pool[_random.nextInt(pool.length)];
     }
 
-    return queue;
+    // Decide toxic or positive
+    final wantToxic = _random.nextDouble() < toxicRatio;
+
+    // Try to find a matching comment that hasn't been used recently
+    eligible.shuffle(_random);
+    Comment? picked;
+    for (final c in eligible) {
+      if (!_recentIds.contains(c.id) && c.isToxic == wantToxic) {
+        picked = c;
+        break;
+      }
+    }
+    // Fallback: any unused comment regardless of toxicity
+    if (picked == null) {
+      for (final c in eligible) {
+        if (!_recentIds.contains(c.id)) {
+          picked = c;
+          break;
+        }
+      }
+    }
+    // If all exhausted, clear history and pick fresh
+    if (picked == null) {
+      _recentIds.clear();
+      eligible.shuffle(_random);
+      picked = eligible.first;
+    }
+
+    _recentIds.add(picked.id);
+    // Keep recent window reasonable (half the pool size)
+    if (_recentIds.length > pool.length ~/ 2) {
+      _recentIds.remove(_recentIds.first);
+    }
+
+    return picked;
+  }
+
+  /// Reset tracking state between rounds.
+  void resetTracking() {
+    _recentIds.clear();
   }
 
   int rollLikes(Comment comment) {
