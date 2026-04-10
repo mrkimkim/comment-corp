@@ -1,9 +1,7 @@
 {
   "mental": {
-    "initial": 80,
-    "toxic_approve_damage_coefficient": 0.3,
-    "positive_correct_heal": 2,
-    "fever_heal_per_second": 1
+    "initial": 100,
+    "toxic_approve_damage_coefficient": 0.3
   },
   "combo": {
     "fever_threshold": 15,
@@ -39,7 +37,6 @@
   },
   "items": {
     "detector_per_game": 3,
-    "detector_duration_seconds": 5,
     "freeze_per_game": 1,
     "freeze_duration_seconds": 5,
     "boost_per_game": 2,

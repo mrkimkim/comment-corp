@@ -8,7 +8,7 @@ import '../providers/game_provider.dart';
 import '../widgets/swipe_stack.dart';
 import 'result_screen.dart';
 
-final _scoreFormatter = NumberFormat('#,###');
+final _scoreFormatter = NumberFormat('#,##0');
 
 class GameScreen extends ConsumerStatefulWidget {
   final String celebType;
@@ -274,7 +274,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Widget _buildTimerBar(GameState game) {
     final phase = _getCurrentPhase(game.elapsed);
     final phaseColor = _getPhaseColor(phase);
-    final progress = (game.timeRemaining / 120).clamp(0.0, 1.0);
+    final progress = (game.timeRemaining / game.totalSeconds).clamp(0.0, 1.0);
     final isLastTen = game.timeRemaining <= 10;
 
     Widget bar = ClipRRect(
@@ -311,7 +311,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Widget _buildHudRow(GameState game) {
     final mentalLow = game.mentalPercent < 0.3;
     final mentalCurrent = game.mental.toInt();
-    const mentalMax = 100;
+    final mentalMax = game.mentalMax.toInt();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -454,7 +454,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
         children: items.map((item) {
           final (name, icon, label, color) = item;
           final count = game.items[name] ?? 0;
-          final isActive = (name == 'freeze' && game.freezeActive) ||
+          final isActive = (name == 'detector' && game.detectorActive) ||
+              (name == 'freeze' && game.freezeActive) ||
               (name == 'boost' && game.boostActive);
           final isDepleted = count <= 0 && !isActive;
 

@@ -25,6 +25,8 @@ class GameState {
   final GameStatus status;
   final String celebType;
   final double mental;
+  final double mentalMax;
+  final int totalSeconds;
   final int score;
   final int combo;
   final int maxCombo;
@@ -57,6 +59,8 @@ class GameState {
     this.status = GameStatus.ready,
     this.celebType = 'idol',
     this.mental = 100,
+    this.mentalMax = 100,
+    this.totalSeconds = 120,
     this.score = 0,
     this.combo = 0,
     this.maxCombo = 0,
@@ -81,14 +85,16 @@ class GameState {
   });
 
   bool get isDead => mental <= 0;
-  bool get isTimeUp => elapsed >= 120;
-  double get mentalPercent => (mental / 100).clamp(0, 1);
-  double get timeRemaining => (120 - elapsed).clamp(0, 120);
+  bool get isTimeUp => elapsed >= totalSeconds;
+  double get mentalPercent => mentalMax > 0 ? (mental / mentalMax).clamp(0, 1) : 0;
+  double get timeRemaining => (totalSeconds - elapsed).clamp(0, totalSeconds.toDouble());
 
   GameState copyWith({
     GameStatus? status,
     String? celebType,
     double? mental,
+    double? mentalMax,
+    int? totalSeconds,
     int? score,
     int? combo,
     int? maxCombo,
@@ -100,7 +106,9 @@ class GameState {
     double? feverTimer,
     Map<String, int>? items,
     Comment? currentComment,
+    bool clearCurrentComment = false,
     SwipeResult? lastResult,
+    bool clearLastResult = false,
     bool? detectorActive,
     double? detectorTimer,
     bool? freezeActive,
@@ -117,6 +125,8 @@ class GameState {
       status: status ?? this.status,
       celebType: celebType ?? this.celebType,
       mental: mental ?? this.mental,
+      mentalMax: mentalMax ?? this.mentalMax,
+      totalSeconds: totalSeconds ?? this.totalSeconds,
       score: score ?? this.score,
       combo: combo ?? this.combo,
       maxCombo: maxCombo ?? this.maxCombo,
@@ -127,8 +137,12 @@ class GameState {
       feverActive: feverActive ?? this.feverActive,
       feverTimer: feverTimer ?? this.feverTimer,
       items: items ?? this.items,
-      currentComment: currentComment ?? this.currentComment,
-      lastResult: lastResult ?? this.lastResult,
+      currentComment: clearCurrentComment
+          ? null
+          : (currentComment ?? this.currentComment),
+      lastResult: clearLastResult
+          ? null
+          : (lastResult ?? this.lastResult),
       detectorActive: detectorActive ?? this.detectorActive,
       detectorTimer: detectorTimer ?? this.detectorTimer,
       freezeActive: freezeActive ?? this.freezeActive,

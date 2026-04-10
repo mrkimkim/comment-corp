@@ -39,6 +39,8 @@ class GameNotifier extends Notifier<GameState> {
       status: GameStatus.playing,
       celebType: celebType,
       mental: _balance.mentalInitial,
+      mentalMax: _balance.mentalInitial,
+      totalSeconds: _balance.totalSeconds,
       items: {
         'detector': _balance.detectorPerGame,
         'freeze': _balance.freezePerGame,
@@ -130,7 +132,7 @@ class GameNotifier extends Notifier<GameState> {
         state = state.copyWith(
           status: GameStatus.gameOver,
           elapsed: elapsed,
-          mental: mental.clamp(0, 100),
+          mental: mental.clamp(0, _balance.mentalInitial),
           feverActive: feverActive,
           feverTimer: feverTimer,
           detectorActive: false,
@@ -157,8 +159,22 @@ class GameNotifier extends Notifier<GameState> {
         clearActiveEvent: clearActiveEvent,
         eventTimer: eventTimer,
         lastEvent: lastEvent,
+        clearLastEvent: lastEvent == null,
       );
     });
+  }
+
+  /// Advance the queue index and return the next comment.
+  /// Recycles to the start when the end is reached.
+  /// Returns null only if the queue is completely empty.
+  Comment? _nextComment() {
+    if (_commentQueue.isEmpty) return null;
+    if (_queueIndex >= _commentQueue.length) {
+      _queueIndex = 0;
+    }
+    final comment = _commentQueue[_queueIndex];
+    _queueIndex++;
+    return comment;
   }
 
   void swipe({required bool approve}) {
@@ -171,18 +187,7 @@ class GameNotifier extends Notifier<GameState> {
     final isCorrect =
         (comment.isToxic && !approve) || (!comment.isToxic && approve);
 
-    // Compute next comment from queue
-    Comment? nextComment;
-    if (_queueIndex < _commentQueue.length) {
-      nextComment = _commentQueue[_queueIndex];
-      _queueIndex++;
-    } else {
-      _queueIndex = 0;
-      if (_commentQueue.isNotEmpty) {
-        nextComment = _commentQueue[_queueIndex];
-        _queueIndex++;
-      }
-    }
+    final nextComment = _nextComment();
 
     if (isCorrect) {
       _applyCorrect(comment, likes, nextComment);
@@ -226,6 +231,7 @@ class GameNotifier extends Notifier<GameState> {
       feverTimer: feverTimer,
       detectorActive: false,
       currentComment: nextComment,
+      clearCurrentComment: nextComment == null,
       lastResult: comment.isToxic
           ? SwipeResult.correctBlock
           : SwipeResult.correctApprove,
@@ -236,9 +242,30 @@ class GameNotifier extends Notifier<GameState> {
     var mental = state.mental;
 
     if (comment.isToxic && approved) {
-      var damage = likes * _balance.toxicDamageCoefficient;
+      var damage = likes * _balance.toxicDamageCoefficient * comment.damageWeight;
       if (damage < 1) damage = 1;
       mental -= damage;
+    }
+
+    final clampedMental = mental.clamp(0.0, _balance.mentalInitial);
+
+    // If mental hit zero, trigger game over immediately
+    if (clampedMental <= 0) {
+      _stopTimers();
+      state = state.copyWith(
+        status: GameStatus.gameOver,
+        combo: 0,
+        wrongCount: state.wrongCount + 1,
+        totalProcessed: state.totalProcessed + 1,
+        mental: 0,
+        detectorActive: false,
+        currentComment: nextComment,
+        clearCurrentComment: nextComment == null,
+        lastResult: approved
+            ? SwipeResult.wrongApprove
+            : SwipeResult.wrongBlock,
+      );
+      return;
     }
 
     // Single state update — no flicker
@@ -246,9 +273,10 @@ class GameNotifier extends Notifier<GameState> {
       combo: 0,
       wrongCount: state.wrongCount + 1,
       totalProcessed: state.totalProcessed + 1,
-      mental: mental.clamp(0, 100),
+      mental: clampedMental,
       detectorActive: false,
       currentComment: nextComment,
+      clearCurrentComment: nextComment == null,
       lastResult: approved
           ? SwipeResult.wrongApprove
           : SwipeResult.wrongBlock,
@@ -284,12 +312,12 @@ class GameNotifier extends Notifier<GameState> {
         );
       case 'skip':
         // 스킵: 현재 댓글을 패스하고 다음으로 (패널티 없음)
-        Comment? nextComment;
-        if (_queueIndex < _commentQueue.length) {
-          nextComment = _commentQueue[_queueIndex];
-          _queueIndex++;
-        }
-        state = state.copyWith(items: items, currentComment: nextComment);
+        final nextComment = _nextComment();
+        state = state.copyWith(
+          items: items,
+          currentComment: nextComment,
+          clearCurrentComment: nextComment == null,
+        );
       default:
         state = state.copyWith(items: items);
     }

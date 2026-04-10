@@ -30,10 +30,6 @@ class BalanceConfig {
   double get mentalInitial => (_data['mental']['initial'] as num).toDouble();
   double get toxicDamageCoefficient =>
       (_data['mental']['toxic_approve_damage_coefficient'] as num).toDouble();
-  double get positiveHeal =>
-      (_data['mental']['positive_correct_heal'] as num).toDouble();
-  double get feverHealPerSecond =>
-      (_data['mental']['fever_heal_per_second'] as num).toDouble();
 
   // Combo
   int get feverThreshold => _data['combo']['fever_threshold'] as int;
@@ -90,10 +86,8 @@ class BalanceConfig {
 
   static const Map<String, dynamic> _defaultBalance = {
     'mental': {
-      'initial': 80,
+      'initial': 100,
       'toxic_approve_damage_coefficient': 0.3,
-      'positive_correct_heal': 2,
-      'fever_heal_per_second': 1,
     },
     'combo': {
       'fever_threshold': 15,
@@ -129,7 +123,6 @@ class BalanceConfig {
     },
     'items': {
       'detector_per_game': 3,
-      'detector_duration_seconds': 5,
       'freeze_per_game': 1,
       'freeze_duration_seconds': 5,
       'boost_per_game': 2,
