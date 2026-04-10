@@ -6,6 +6,7 @@ import '../constants/app_text_styles.dart';
 import '../models/game_state.dart';
 import '../providers/game_provider.dart';
 import '../widgets/swipe_stack.dart';
+import '../widgets/visual_effects.dart';
 import 'result_screen.dart';
 
 final _scoreFormatter = NumberFormat('#,##0');
@@ -27,14 +28,31 @@ class _GameScreenState extends ConsumerState<GameScreen>
   late final AnimationController _flashController;
   late final Animation<double> _flashOpacity;
 
-  /// Mental warning red border blink
-  late final AnimationController _mentalBlinkController;
+  /// General-purpose pulse (timer bar last-10s, mental icon blink)
+  late final AnimationController _pulseController;
 
   /// Floating score popup (+points)
   late final AnimationController _floatingScoreController;
   late final Animation<double> _floatingScoreOpacity;
   late final Animation<Offset> _floatingScoreOffset;
   int _floatingScoreValue = 0;
+
+  // ── Visual-effects state ─────────────────────────────────────────
+
+  /// Previous phase number for detecting phase transitions.
+  int _previousPhase = 1;
+
+  /// Whether to show the phase transition banner.
+  bool _showPhaseBanner = false;
+
+  /// The phase label to display (e.g. "PHASE 2").
+  String _phaseBannerText = '';
+
+  /// Pending event notification name.
+  String? _pendingEventName;
+
+  /// Pending event notification description.
+  String _pendingEventDescription = '';
 
   @override
   void initState() {
@@ -54,8 +72,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
       CurvedAnimation(parent: _flashController, curve: Curves.easeOut),
     );
 
-    // ── Mental blink (loop) ──
-    _mentalBlinkController = AnimationController(
+    // ── Pulse (loop, used for timer bar + mental icon) ──
+    _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     )..repeat(reverse: true);
@@ -85,7 +103,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   @override
   void dispose() {
     _flashController.dispose();
-    _mentalBlinkController.dispose();
+    _pulseController.dispose();
     _floatingScoreController.dispose();
     super.dispose();
   }
@@ -114,6 +132,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
     return 5;
   }
 
+  /// Build a short description for an active event based on its effects.
+  String _describeEvent(GameEvent event) {
+    final parts = <String>[];
+    if (event.speedMultiplier != null) {
+      parts.add('속도 변화!');
+    }
+    if (event.toxicRatioOverride != null) {
+      final pct = (event.toxicRatioOverride! * 100).toInt();
+      parts.add('악플 비율 $pct%');
+    }
+    if (parts.isEmpty) return '${event.durationSeconds.toInt()}초간 지속';
+    return parts.join(' / ');
+  }
+
   Color _getPhaseColor(int phase) {
     switch (phase) {
       case 1:
@@ -136,26 +168,31 @@ class _GameScreenState extends ConsumerState<GameScreen>
   @override
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider);
+    final audio = ref.read(audioServiceProvider);
 
     // ── Listeners ──
     ref.listen(gameProvider, (prev, next) {
       if (!mounted) return;
 
-      // Navigate to result screen on game over
+      // ── SFX: Game over ──
       if (prev?.status != GameStatus.gameOver &&
           next.status == GameStatus.gameOver) {
+        audio.playSfx(Sfx.gameOver);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ResultScreen()),
         );
         return;
       }
 
-      // Flash + floating score on every swipe (detect by totalProcessed change)
+      // Flash + floating score + SFX on every swipe (detect by totalProcessed change)
       if (next.totalProcessed > (prev?.totalProcessed ?? 0) &&
           next.lastResult != null) {
         final isCorrect = next.lastResult == SwipeResult.correctBlock ||
             next.lastResult == SwipeResult.correctApprove;
         _showFlash(isCorrect);
+
+        // ── SFX: Swipe result ──
+        audio.playSfx(isCorrect ? Sfx.swipeCorrect : Sfx.swipeWrong);
 
         // Floating score popup on correct
         if (isCorrect) {
@@ -164,6 +201,37 @@ class _GameScreenState extends ConsumerState<GameScreen>
             _showFloatingScore(gained);
           }
         }
+      }
+
+      // ── SFX: Combo tick (combo >= 5) ──
+      if (next.combo >= 5 && next.combo != (prev?.combo ?? 0)) {
+        audio.playSfx(Sfx.comboTick);
+      }
+
+      // ── SFX: Fever start ──
+      if (next.feverActive && !(prev?.feverActive ?? false)) {
+        audio.playSfx(Sfx.feverStart);
+      }
+
+      // ── Phase transition detection ──
+      final currentPhase = _getCurrentPhase(next.elapsed);
+      if (currentPhase != _previousPhase && next.status == GameStatus.playing) {
+        setState(() {
+          _previousPhase = currentPhase;
+          _phaseBannerText = 'PHASE $currentPhase';
+          _showPhaseBanner = true;
+        });
+      }
+
+      // ── Event notification ──
+      if (next.lastEvent != null && next.lastEvent != prev?.lastEvent) {
+        final desc = next.activeEvent != null
+            ? _describeEvent(next.activeEvent!)
+            : '이벤트 발생!';
+        setState(() {
+          _pendingEventName = next.lastEvent;
+          _pendingEventDescription = desc;
+        });
       }
     });
 
@@ -243,25 +311,36 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 },
               ),
 
-            // ── Mental warning border blink (<30%) ──
-            if (game.mentalPercent < 0.3 &&
-                game.status == GameStatus.playing)
-              AnimatedBuilder(
-                animation: _mentalBlinkController,
-                builder: (context, _) {
-                  return IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.red.withValues(
-                            alpha: _mentalBlinkController.value * 0.3,
-                          ),
-                          width: 4,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+            // ── Fever overlay (golden flash + border glow) ──
+            Positioned.fill(
+              child: FeverOverlay(feverActive: game.feverActive),
+            ),
+
+            // ── Mental warning (3-stage: 50%/30%/15%) ──
+            if (game.status == GameStatus.playing)
+              Positioned.fill(
+                child: MentalWarning(
+                  mentalPercent: game.mentalPercent,
+                ),
+              ),
+
+            // ── Phase transition banner ──
+            if (_showPhaseBanner)
+              Positioned.fill(
+                child: PhaseTransitionBanner(
+                  phase: _phaseBannerText,
+                  onComplete: () =>
+                      setState(() => _showPhaseBanner = false),
+                ),
+              ),
+
+            // ── Event notification ──
+            if (_pendingEventName != null)
+              EventNotification(
+                eventName: _pendingEventName!,
+                eventDescription: _pendingEventDescription,
+                onDismissed: () =>
+                    setState(() => _pendingEventName = null),
               ),
           ],
         ),
@@ -287,13 +366,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
       ),
     );
 
-    // Pulse animation in the last 10 seconds using the mentalBlinkController
-    // to avoid adding another AnimationController.
+    // Pulse animation in the last 10 seconds.
     if (isLastTen && game.status == GameStatus.playing) {
       bar = AnimatedBuilder(
-        animation: _mentalBlinkController,
+        animation: _pulseController,
         builder: (context, child) {
-          final opacity = 0.6 + _mentalBlinkController.value * 0.4;
+          final opacity = 0.6 + _pulseController.value * 0.4;
           return Opacity(opacity: opacity, child: child);
         },
         child: bar,
@@ -323,14 +401,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
               children: [
                 mentalLow
                     ? AnimatedBuilder(
-                        animation: _mentalBlinkController,
+                        animation: _pulseController,
                         builder: (context, _) {
                           return Icon(
                             Icons.favorite,
                             size: 18,
                             color: Colors.red.withValues(
                               alpha:
-                                  0.4 + _mentalBlinkController.value * 0.6,
+                                  0.4 + _pulseController.value * 0.6,
                             ),
                           );
                         },
@@ -355,30 +433,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
             style: AppTextStyles.scoreLive,
           ),
 
-          // ── Right: Combo ──
+          // ── Right: Combo (5-level escalation) ──
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (game.combo > 0 || game.feverActive) ...[
-                  if (game.feverActive)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 2),
-                      child: Text('\u{1F525}', style: TextStyle(fontSize: 14)),
-                    ),
-                  Text(
-                    '${game.combo}x',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: game.feverActive
-                          ? Colors.orange
-                          : (game.combo >= 5
-                              ? AppColors.comboAmber
-                              : AppColors.textSecondary),
-                    ),
+                if (game.combo > 0 || game.feverActive)
+                  ComboIndicator(
+                    combo: game.combo,
+                    feverActive: game.feverActive,
                   ),
-                ],
               ],
             ),
           ),
@@ -461,7 +525,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
           return GestureDetector(
             onTap: count > 0 && !isActive
-                ? () => ref.read(gameProvider.notifier).useItem(name)
+                ? () {
+                    ref.read(audioServiceProvider).playSfx(Sfx.itemUse);
+                    ref.read(gameProvider.notifier).useItem(name);
+                  }
                 : null,
             child: Column(
               mainAxisSize: MainAxisSize.min,

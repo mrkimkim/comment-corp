@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import '../models/game_state.dart';
 import '../providers/game_provider.dart';
 import 'game_screen.dart';
 
@@ -64,6 +65,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
     final game = ref.read(gameProvider);
     _finalScore = game.score;
 
+    // 리더보드에 점수 자동 제출 (실패해도 UI에 영향 없음)
+    _submitScoreToLeaderboard(game);
+
     // ---- 1. Score count-up (1.5s) ----
     _scoreController = AnimationController(
       vsync: this,
@@ -116,6 +120,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
 
     // ---- Kick off the orchestrated sequence ----
     _runSequence();
+  }
+
+  void _submitScoreToLeaderboard(GameState game) {
+    final leaderboardService = ref.read(leaderboardServiceProvider);
+    // Fire-and-forget — 실패해도 무시
+    leaderboardService.submitScore(
+      celebType: game.celebType,
+      score: game.score,
+      maxCombo: game.maxCombo,
+      survivalSeconds: game.elapsed,
+    );
   }
 
   Future<void> _runSequence() async {

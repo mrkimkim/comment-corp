@@ -4,10 +4,15 @@ import '../models/comment.dart';
 import '../models/game_state.dart';
 import '../services/comment_service.dart';
 import '../services/event_service.dart';
+import '../services/leaderboard_service.dart';
 import '../utils/balance_config.dart';
+
+// Re-export so consumers of game_provider can access audio without an extra import.
+export '../services/audio_service.dart' show audioServiceProvider, AudioService, Sfx;
 
 final commentServiceProvider = Provider((_) => CommentService());
 final eventServiceProvider = Provider((_) => EventService());
+final leaderboardServiceProvider = Provider((_) => LeaderboardService());
 final balanceConfigProvider = FutureProvider((_) => BalanceConfig.load());
 
 final gameProvider = NotifierProvider<GameNotifier, GameState>(GameNotifier.new);
