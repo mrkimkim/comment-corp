@@ -86,13 +86,13 @@ class BalanceConfig {
 
   static const Map<String, dynamic> _defaultBalance = {
     'mental': {
-      'initial': 100,
+      'initial': 80,
       'toxic_approve_damage_coefficient': 0.3,
       'positive_correct_heal': 2,
       'fever_heal_per_second': 1,
     },
     'combo': {
-      'fever_threshold': 20,
+      'fever_threshold': 15,
       'fever_duration_seconds': 8,
       'multiplier_tiers': [
         {'min_combo': 0, 'multiplier': 1.0},
@@ -109,11 +109,11 @@ class BalanceConfig {
     'timer': {
       'total_seconds': 120,
       'phases': [
-        {'start': 0, 'end': 30, 'interval': 2.0, 'toxic_ratio': 0.30, 'max_difficulty': 1},
+        {'start': 0, 'end': 30, 'interval': 1.5, 'toxic_ratio': 0.30, 'max_difficulty': 1},
         {'start': 30, 'end': 60, 'interval': 1.5, 'toxic_ratio': 0.40, 'max_difficulty': 2},
         {'start': 60, 'end': 90, 'interval': 1.0, 'toxic_ratio': 0.50, 'max_difficulty': 3},
         {'start': 90, 'end': 110, 'interval': 0.7, 'toxic_ratio': 0.55, 'max_difficulty': 4},
-        {'start': 110, 'end': 120, 'interval': 0.5, 'toxic_ratio': 0.60, 'max_difficulty': 5},
+        {'start': 110, 'end': 120, 'interval': 0.6, 'toxic_ratio': 0.60, 'max_difficulty': 5},
       ],
     },
     'celeb_type_modifiers': {

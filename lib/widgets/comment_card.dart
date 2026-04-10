@@ -80,6 +80,7 @@ class CommentCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              // Swipe indicator with icon (dual encoding for color-blind accessibility)
               if (showIndicator && ratio.abs() > 0.2)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -90,68 +91,68 @@ class CommentCard extends StatelessWidget {
                         : AppColors.correct.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    ratio < 0 ? 'BLOCK' : 'APPROVE',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        ratio < 0 ? Icons.close : Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        ratio < 0 ? 'BLOCK' : 'APPROVE',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               if (showIndicator && ratio.abs() > 0.2)
                 const SizedBox(height: 12),
-              // Profile row
-              Row(
-                children: [
-                  // Avatar placeholder
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.person,
-                        size: 20, color: Colors.grey[500]),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _nickname,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            _difficultyBadge(),
-                            const SizedBox(width: 8),
-                            _likesWidget(),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
+              // Comment text -- primary content, top position, large size
               Text(
                 comment.text,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   height: 1.4,
                   color: AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 14),
+              // Profile & meta row -- bottom, de-emphasized
+              Row(
+                children: [
+                  // Avatar placeholder
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.person,
+                        size: 16, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _nickname,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _difficultyBadge(),
+                  const SizedBox(width: 8),
+                  _likesWidget(),
+                ],
+              ),
             ],
           ),
         ),

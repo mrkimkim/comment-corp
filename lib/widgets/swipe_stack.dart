@@ -19,11 +19,23 @@ class SwipeStack extends StatefulWidget {
 }
 
 class _SwipeStackState extends State<SwipeStack>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   double _dragX = 0;
   late AnimationController _animController;
   late Animation<Offset> _animOffset;
-  static const _swipeThreshold = 80.0;
+
+  // Card entry animation controller (slide-up + slight bounce)
+  late AnimationController _entryController;
+  late Animation<double> _entrySlide;
+  late Animation<double> _entryOpacity;
+
+  double get _swipeThreshold {
+    final mq = MediaQuery.maybeOf(context);
+    if (mq != null) {
+      return mq.size.width * 0.25;
+    }
+    return 80.0; // fallback
+  }
 
   @override
   void initState() {
@@ -39,11 +51,35 @@ class _SwipeStackState extends State<SwipeStack>
       parent: _animController,
       curve: Curves.easeOut,
     ));
+
+    // Entry animation: 200ms slide-up with slight bounce
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _entrySlide = Tween<double>(begin: 60.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _entryController,
+        curve: Curves.easeOutBack, // slight bounce overshoot
+      ),
+    );
+    _entryOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entryController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    // Play entry animation for the first card
+    if (widget.comment != null) {
+      _entryController.forward(from: 0);
+    }
   }
 
   @override
   void dispose() {
     _animController.dispose();
+    _entryController.dispose();
     super.dispose();
   }
 
@@ -53,6 +89,8 @@ class _SwipeStackState extends State<SwipeStack>
     if (widget.comment != oldWidget.comment) {
       _dragX = 0;
       _animController.reset();
+      // Trigger entry animation for the new card
+      _entryController.forward(from: 0);
     }
   }
 
@@ -61,7 +99,8 @@ class _SwipeStackState extends State<SwipeStack>
   }
 
   void _onPanEnd(DragEndDetails details) {
-    if (_dragX.abs() >= _swipeThreshold) {
+    final threshold = _swipeThreshold;
+    if (_dragX.abs() >= threshold) {
       final approve = _dragX > 0;
       final screenWidth = MediaQuery.of(context).size.width;
       _animOffset = Tween<Offset>(
@@ -103,15 +142,21 @@ class _SwipeStackState extends State<SwipeStack>
       onPanUpdate: _onPanUpdate,
       onPanEnd: _onPanEnd,
       child: AnimatedBuilder(
-        animation: _animController,
+        animation: Listenable.merge([_animController, _entryController]),
         builder: (context, child) {
-          final offset =
+          final swipeOffset =
               _animController.isAnimating ? _animOffset.value.dx : _dragX;
-          return CommentCard(
-            comment: widget.comment!,
-            dragOffset: offset,
-            showIndicator: true,
-            detectorActive: widget.detectorActive,
+          return Opacity(
+            opacity: _entryOpacity.value,
+            child: Transform.translate(
+              offset: Offset(0, _entrySlide.value),
+              child: CommentCard(
+                comment: widget.comment!,
+                dragOffset: swipeOffset,
+                showIndicator: true,
+                detectorActive: widget.detectorActive,
+              ),
+            ),
           );
         },
       ),
