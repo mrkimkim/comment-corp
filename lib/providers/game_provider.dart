@@ -206,10 +206,7 @@ class GameNotifier extends Notifier<GameState> {
         _isBoostActive() ? _balance.boostMultiplier : 1;
     final points = ((base + likesBonus) * multiplier * boostMult).toInt();
 
-    var mental = state.mental;
-    if (!comment.isToxic) {
-      mental = (mental + _balance.positiveHeal).clamp(0, 100);
-    }
+    final mental = state.mental; // 멘탈 회복 없음 — 피버에서만 회복
 
     var feverActive = state.feverActive;
     var feverTimer = state.feverTimer;
