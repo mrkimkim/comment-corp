@@ -39,15 +39,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   // ── Visual-effects state ─────────────────────────────────────────
 
-  /// Previous phase number for detecting phase transitions.
-  int _previousPhase = 1;
-
-  /// Whether to show the phase transition banner.
-  bool _showPhaseBanner = false;
-
-  /// The phase label to display (e.g. "PHASE 2").
-  String _phaseBannerText = '';
-
   /// Pending event notification name.
   String? _pendingEventName;
 
@@ -138,21 +129,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
     return parts.join(' / ');
   }
 
-  Color _getPhaseColor(int phase) {
-    switch (phase) {
-      case 1:
-        return AppColors.secondary; // mint
-      case 2:
-        return const Color(0xFFFFE66D); // yellow
-      case 3:
-        return const Color(0xFFFF8C42); // orange
-      case 4:
-        return const Color(0xFFFF7675); // red
-      case 5:
-        return const Color(0xFFC0392B); // deep red
-      default:
-        return AppColors.secondary;
-    }
+  Color _getTimerColor(double timeRemaining) {
+    if (timeRemaining <= 10) return const Color(0xFFC0392B); // last 10s red
+    if (timeRemaining <= 30) return const Color(0xFFFF7675); // last 30s orange-red
+    return AppColors.secondary; // default mint
   }
 
   // ── Build ──────────────────────────────────────────────────────────
@@ -203,18 +183,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // ── SFX: Fever start ──
       if (next.feverActive && !(prev?.feverActive ?? false)) {
         audio.playSfx(Sfx.feverStart);
-      }
-
-      // ── Phase transition detection (combo-based) ──
-      if (next.currentPhase != _previousPhase && next.status == GameStatus.playing) {
-        // Only show banner when phase goes UP (not on combo-reset drops)
-        if (next.currentPhase > _previousPhase) {
-          setState(() {
-            _phaseBannerText = 'PHASE ${next.currentPhase}';
-            _showPhaseBanner = true;
-          });
-        }
-        _previousPhase = next.currentPhase;
       }
 
       // ── Event notification ──
@@ -318,16 +286,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 ),
               ),
 
-            // ── Phase transition banner ──
-            if (_showPhaseBanner)
-              Positioned.fill(
-                child: PhaseTransitionBanner(
-                  phase: _phaseBannerText,
-                  onComplete: () =>
-                      setState(() => _showPhaseBanner = false),
-                ),
-              ),
-
             // ── Event notification ──
             if (_pendingEventName != null)
               EventNotification(
@@ -345,7 +303,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   // ── Timer bar (full-width, 6px, phase color, pulse on last 10s) ──
 
   Widget _buildTimerBar(GameState game) {
-    final phaseColor = _getPhaseColor(game.currentPhase);
+    final timerColor = _getTimerColor(game.timeRemaining);
     final progress = (game.timeRemaining / game.totalSeconds).clamp(0.0, 1.0);
     final isLastTen = game.timeRemaining <= 10;
 
@@ -354,7 +312,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       child: LinearProgressIndicator(
         value: progress,
         backgroundColor: Colors.grey[300],
-        color: phaseColor,
+        color: timerColor,
         minHeight: 6,
       ),
     );
