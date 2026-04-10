@@ -150,8 +150,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return;
       }
 
-      // Flash on swipe result
-      if (next.lastResult != null && prev?.lastResult != next.lastResult) {
+      // Flash + floating score on every swipe (detect by totalProcessed change)
+      if (next.totalProcessed > (prev?.totalProcessed ?? 0) &&
+          next.lastResult != null) {
         final isCorrect = next.lastResult == SwipeResult.correctBlock ||
             next.lastResult == SwipeResult.correctApprove;
         _showFlash(isCorrect);
