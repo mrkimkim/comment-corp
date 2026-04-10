@@ -99,7 +99,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 _buildStatsRow(game),
                 const SizedBox(height: 8),
                 // Active item indicators
-                if (game.detectorActive || game.freezeActive || game.boostActive)
+                if (game.freezeActive || game.boostActive)
                   _buildActiveItemBanner(game),
                 Expanded(
                   child: Center(
@@ -340,9 +340,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   Widget _buildActiveItemBanner(GameState game) {
     final active = <(String, IconData, Color, double)>[];
-    if (game.detectorActive) {
-      active.add(('탐지기', Icons.search, AppColors.secondary, game.detectorTimer));
-    }
     if (game.freezeActive) {
       active.add(('프리즈', Icons.ac_unit, const Color(0xFF87CEEB), game.freezeTimer));
     }
@@ -387,10 +384,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   Widget _buildItemBar(GameState game) {
     final items = [
-      ('detector', Icons.search, '탐지기', AppColors.secondary),
+      ('detector', Icons.visibility, '탐지기', AppColors.secondary),
       ('freeze', Icons.ac_unit, '프리즈', const Color(0xFF87CEEB)),
-      ('boost', Icons.bolt, '부스트', AppColors.accent),
-      ('shield', Icons.shield, '쉴드', AppColors.politician),
+      ('boost', Icons.bolt, '부스트', const Color(0xFFFF8C42)),
+      ('skip', Icons.skip_next, '스킵', const Color(0xFF9B59B6)),
     ];
 
     return Padding(
@@ -400,7 +397,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         children: items.map((item) {
           final (name, icon, label, color) = item;
           final count = game.items[name] ?? 0;
-          final isActive = (name == 'detector' && game.detectorActive) ||
+          final isActive =
               (name == 'freeze' && game.freezeActive) ||
               (name == 'boost' && game.boostActive);
           return GestureDetector(

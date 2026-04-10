@@ -43,7 +43,7 @@ class GameNotifier extends Notifier<GameState> {
         'detector': _balance.detectorPerGame,
         'freeze': _balance.freezePerGame,
         'boost': _balance.boostPerGame,
-        'shield': _balance.shieldPerGame,
+        'skip': _balance.shieldPerGame,
       },
     );
 
@@ -73,17 +73,6 @@ class GameNotifier extends Notifier<GameState> {
         }
       } else {
         elapsed = state.elapsed + 0.1;
-      }
-
-      // --- Detector timer tick ---
-      var detectorActive = state.detectorActive;
-      var detectorTimer = state.detectorTimer;
-      if (detectorActive) {
-        detectorTimer -= 0.1;
-        if (detectorTimer <= 0) {
-          detectorActive = false;
-          detectorTimer = 0;
-        }
       }
 
       // --- Boost timer tick ---
@@ -139,7 +128,6 @@ class GameNotifier extends Notifier<GameState> {
           feverActive: feverActive,
           feverTimer: feverTimer,
           detectorActive: false,
-          detectorTimer: 0,
           freezeActive: false,
           freezeTimer: 0,
           boostActive: false,
@@ -155,8 +143,6 @@ class GameNotifier extends Notifier<GameState> {
         mental: mental,
         feverActive: feverActive,
         feverTimer: feverTimer,
-        detectorActive: detectorActive,
-        detectorTimer: detectorTimer,
         freezeActive: freezeActive,
         freezeTimer: freezeTimer,
         boostActive: boostActive,
@@ -197,6 +183,7 @@ class GameNotifier extends Notifier<GameState> {
 
     state = state.copyWith(
       totalProcessed: state.totalProcessed + 1,
+      detectorActive: false, // detector는 1회성 — 스와이프하면 꺼짐
     );
 
     // Immediately serve next comment — no timer delay
@@ -249,13 +236,6 @@ class GameNotifier extends Notifier<GameState> {
     if (comment.isToxic && approved) {
       var damage = likes * _balance.toxicDamageCoefficient;
       if (damage < 1) damage = 1;
-
-      final items = Map<String, int>.from(state.items);
-      if ((items['shield'] ?? 0) > 0) {
-        items['shield'] = items['shield']! - 1;
-        damage = 0;
-        state = state.copyWith(items: items);
-      }
       mental -= damage;
     }
 
@@ -274,14 +254,15 @@ class GameNotifier extends Notifier<GameState> {
   void useItem(String itemName) {
     final items = Map<String, int>.from(state.items);
     if ((items[itemName] ?? 0) <= 0) return;
+    if (state.status != GameStatus.playing) return;
     items[itemName] = items[itemName]! - 1;
 
     switch (itemName) {
       case 'detector':
+        // 1회성: 현재 카드가 악플/선플인지 즉시 표시
         state = state.copyWith(
           items: items,
           detectorActive: true,
-          detectorTimer: _balance.detectorDuration,
         );
       case 'freeze':
         state = state.copyWith(
@@ -295,9 +276,10 @@ class GameNotifier extends Notifier<GameState> {
           boostActive: true,
           boostTimer: _balance.boostDuration,
         );
-      case 'shield':
-        // Shield is consumed passively in _handleWrong; just decrement count.
+      case 'skip':
+        // 스킵: 현재 댓글을 패스하고 다음으로 (패널티 없음)
         state = state.copyWith(items: items);
+        _serveNextComment();
       default:
         state = state.copyWith(items: items);
     }

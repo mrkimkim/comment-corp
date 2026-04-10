@@ -39,15 +39,20 @@ class CommentCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _cardColor(ratio),
             borderRadius: BorderRadius.circular(16),
-            border: detectorActive && comment.isToxic
-                ? Border.all(color: Colors.red, width: 3)
+            border: detectorActive
+                ? Border.all(
+                    color: comment.isToxic ? Colors.red : AppColors.correct,
+                    width: 3,
+                  )
                 : null,
             boxShadow: [
               BoxShadow(
-                color: detectorActive && comment.isToxic
-                    ? Colors.red.withValues(alpha: 0.3)
+                color: detectorActive
+                    ? (comment.isToxic
+                        ? Colors.red.withValues(alpha: 0.3)
+                        : AppColors.correct.withValues(alpha: 0.3))
                     : Colors.black.withValues(alpha: 0.1),
-                blurRadius: detectorActive && comment.isToxic ? 15 : 10,
+                blurRadius: detectorActive ? 15 : 10,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -55,6 +60,26 @@ class CommentCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Detector reveal: 악플/선플 즉시 표시
+              if (detectorActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: comment.isToxic
+                        ? Colors.red
+                        : AppColors.correct,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    comment.isToxic ? '🚨 악플!' : '✅ 선플!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               if (showIndicator && ratio.abs() > 0.2)
                 Container(
                   padding: const EdgeInsets.symmetric(
