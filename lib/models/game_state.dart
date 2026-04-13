@@ -34,8 +34,6 @@ class GameState {
   final int totalProcessed;
   final int correctCount;
   final int wrongCount;
-  final bool feverActive;
-  final double feverTimer;
   final Map<String, int> items;
   final Comment? currentComment;
   final SwipeResult? lastResult;
@@ -71,8 +69,6 @@ class GameState {
     this.totalProcessed = 0,
     this.correctCount = 0,
     this.wrongCount = 0,
-    this.feverActive = false,
-    this.feverTimer = 0,
     this.items = const {},
     this.currentComment,
     this.lastResult,
@@ -106,8 +102,6 @@ class GameState {
     int? totalProcessed,
     int? correctCount,
     int? wrongCount,
-    bool? feverActive,
-    double? feverTimer,
     Map<String, int>? items,
     Comment? currentComment,
     bool clearCurrentComment = false,
@@ -139,8 +133,6 @@ class GameState {
       totalProcessed: totalProcessed ?? this.totalProcessed,
       correctCount: correctCount ?? this.correctCount,
       wrongCount: wrongCount ?? this.wrongCount,
-      feverActive: feverActive ?? this.feverActive,
-      feverTimer: feverTimer ?? this.feverTimer,
       items: items ?? this.items,
       currentComment: clearCurrentComment
           ? null

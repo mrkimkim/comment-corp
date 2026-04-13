@@ -188,10 +188,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         audio.playSfx(Sfx.comboTick);
       }
 
-      // ── SFX: Fever start ──
-      if (next.feverActive && !(prev?.feverActive ?? false)) {
-        audio.playSfx(Sfx.feverStart);
-      }
+      // (fever removed — combo only)
 
       // ── Event notification ──
       if (next.lastEvent != null && next.lastEvent != prev?.lastEvent) {
@@ -280,11 +277,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   );
                 },
               ),
-
-            // ── Fever overlay (golden flash + border glow) ──
-            Positioned.fill(
-              child: FeverOverlay(feverActive: game.feverActive),
-            ),
 
             // ── Mental warning (3-stage: 50%/30%/15%) ──
             if (game.status == GameStatus.playing)
@@ -397,10 +389,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (game.combo > 0 || game.feverActive)
+                if (game.combo > 0)
                   ComboIndicator(
                     combo: game.combo,
-                    feverActive: game.feverActive,
+                    feverActive: false,
                   ),
               ],
             ),

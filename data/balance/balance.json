@@ -3,20 +3,9 @@
     "initial": 100,
     "toxic_approve_damage_coefficient": 0.3
   },
-  "combo": {
-    "fever_threshold": 15,
-    "fever_duration_seconds": 8,
-    "multiplier_tiers": [
-      { "min_combo": 0, "multiplier": 1.0 },
-      { "min_combo": 5, "multiplier": 1.5 },
-      { "min_combo": 10, "multiplier": 2.0 },
-      { "min_combo": 20, "multiplier": 3.0 }
-    ]
-  },
   "score": {
-    "toxic_correct_base": 100,
-    "positive_correct_base": 50,
-    "likes_bonus_multiplier": 2
+    "base": 100,
+    "combo_bonus_per_combo": 0.1
   },
   "timer": {
     "total_seconds": 120

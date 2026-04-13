@@ -31,18 +31,10 @@ class BalanceConfig {
   double get toxicDamageCoefficient =>
       (_data['mental']['toxic_approve_damage_coefficient'] as num).toDouble();
 
-  // Combo
-  int get feverThreshold => _data['combo']['fever_threshold'] as int;
-  double get feverDuration =>
-      (_data['combo']['fever_duration_seconds'] as num).toDouble();
-  List<Map<String, dynamic>> get comboTiers =>
-      List<Map<String, dynamic>>.from(_data['combo']['multiplier_tiers'] as List);
-
-  // Score
-  int get toxicCorrectBase => _data['score']['toxic_correct_base'] as int;
-  int get positiveCorrectBase => _data['score']['positive_correct_base'] as int;
-  int get likesBonusMultiplier =>
-      _data['score']['likes_bonus_multiplier'] as int;
+  // Score: base × (1 + combo × comboBonusPerCombo) × boost
+  int get scoreBase => _data['score']['base'] as int;
+  double get comboBonusPerCombo =>
+      (_data['score']['combo_bonus_per_combo'] as num).toDouble();
 
   // Timer
   int get totalSeconds => _data['timer']['total_seconds'] as int;
@@ -65,16 +57,6 @@ class BalanceConfig {
       (_data['items']['boost_duration_seconds'] as num).toDouble();
   int get boostMultiplier => _data['items']['boost_multiplier'] as int;
   int get shieldPerGame => _data['items']['shield_per_game'] as int;
-
-  double getComboMultiplier(int combo) {
-    double multiplier = 1.0;
-    for (final tier in comboTiers) {
-      if (combo >= (tier['min_combo'] as int)) {
-        multiplier = (tier['multiplier'] as num).toDouble();
-      }
-    }
-    return multiplier;
-  }
 
   /// Returns the phase matching the given combo count.
   /// Phases are sorted by min_combo ascending; the last phase whose
@@ -105,20 +87,9 @@ class BalanceConfig {
       'initial': 100,
       'toxic_approve_damage_coefficient': 0.3,
     },
-    'combo': {
-      'fever_threshold': 15,
-      'fever_duration_seconds': 8,
-      'multiplier_tiers': [
-        {'min_combo': 0, 'multiplier': 1.0},
-        {'min_combo': 5, 'multiplier': 1.5},
-        {'min_combo': 10, 'multiplier': 2.0},
-        {'min_combo': 20, 'multiplier': 3.0},
-      ],
-    },
     'score': {
-      'toxic_correct_base': 100,
-      'positive_correct_base': 50,
-      'likes_bonus_multiplier': 2,
+      'base': 100,
+      'combo_bonus_per_combo': 0.1,
     },
     'timer': {
       'total_seconds': 120,

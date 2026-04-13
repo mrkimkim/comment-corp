@@ -337,6 +337,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                       height: 54,
                       child: ElevatedButton(
                         onPressed: () {
+                          try { ref.read(audioServiceProvider).stopBgm(); } catch (_) {}
                           ref.read(gameProvider.notifier).reset();
                           Navigator.of(context).pushReplacement(
                             MaterialPageRoute<void>(
@@ -401,6 +402,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                       height: 54,
                       child: OutlinedButton(
                         onPressed: () {
+                          try { ref.read(audioServiceProvider).stopBgm(); } catch (_) {}
                           ref.read(gameProvider.notifier).reset();
                           Navigator.of(context)
                               .popUntil((route) => route.isFirst);

@@ -66,8 +66,6 @@ class GameNotifier extends Notifier<GameState> {
       if (state.status != GameStatus.playing) return;
 
       var mental = state.mental;
-      var feverTimer = state.feverTimer;
-      var feverActive = state.feverActive;
 
       // --- Freeze: if active, do NOT advance elapsed ---
       var freezeActive = state.freezeActive;
@@ -119,15 +117,6 @@ class GameNotifier extends Notifier<GameState> {
         }
       }
 
-      // --- Fever timer tick (no heal) ---
-      if (feverActive) {
-        feverTimer -= 0.1;
-        if (feverTimer <= 0) {
-          feverActive = false;
-          feverTimer = 0;
-        }
-      }
-
       // --- Game over check ---
       if (mental <= 0 || elapsed >= _balance.totalSeconds) {
         _stopTimers();
@@ -135,8 +124,6 @@ class GameNotifier extends Notifier<GameState> {
           status: GameStatus.gameOver,
           elapsed: elapsed,
           mental: mental.clamp(0, _balance.mentalInitial),
-          feverActive: feverActive,
-          feverTimer: feverTimer,
           detectorActive: false,
           freezeActive: false,
           freezeTimer: 0,
@@ -154,8 +141,6 @@ class GameNotifier extends Notifier<GameState> {
       state = state.copyWith(
         elapsed: elapsed,
         mental: mental,
-        feverActive: feverActive,
-        feverTimer: feverTimer,
         freezeActive: freezeActive,
         freezeTimer: freezeTimer,
         boostActive: boostActive,
@@ -207,23 +192,10 @@ class GameNotifier extends Notifier<GameState> {
     final maxCombo =
         newCombo > state.maxCombo ? newCombo : state.maxCombo;
 
-    final base = comment.isToxic
-        ? _balance.toxicCorrectBase
-        : _balance.positiveCorrectBase;
-    final likesBonus = likes * _balance.likesBonusMultiplier;
-    final multiplier = _balance.getComboMultiplier(newCombo);
-    final boostMult =
-        _isBoostActive() ? _balance.boostMultiplier : 1;
-    final points = ((base + likesBonus) * multiplier * boostMult).toInt();
-
-    final mental = state.mental; // 멘탈 회복 없음 — 피버에서만 회복
-
-    var feverActive = state.feverActive;
-    var feverTimer = state.feverTimer;
-    if (newCombo >= _balance.feverThreshold && !feverActive) {
-      feverActive = true;
-      feverTimer = _balance.feverDuration;
-    }
+    // 점수 = base × (1 + combo × bonusPerCombo) × boost
+    final comboMultiplier = 1.0 + newCombo * _balance.comboBonusPerCombo;
+    final boostMult = _isBoostActive() ? _balance.boostMultiplier : 1;
+    final points = (_balance.scoreBase * comboMultiplier * boostMult).toInt();
 
     // Update phase based on new combo
     final newPhase = _balance.getPhaseIndex(newCombo);
@@ -235,9 +207,6 @@ class GameNotifier extends Notifier<GameState> {
       maxCombo: maxCombo,
       correctCount: state.correctCount + 1,
       totalProcessed: state.totalProcessed + 1,
-      mental: mental,
-      feverActive: feverActive,
-      feverTimer: feverTimer,
       detectorActive: false,
       currentComment: nextComment,
       clearCurrentComment: nextComment == null,
