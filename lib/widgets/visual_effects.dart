@@ -2,10 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../constants/app_colors.dart';
-
 // =============================================================================
-// Visual-effects-only palette (game_screen 통합 전까지 여기서만 사용)
+// Visual-effects-only palette
 // =============================================================================
 const Color _comboAmber = Color(0xFFFFA000);
 const Color _comboOrange = Color(0xFFFF8C42);
@@ -14,155 +12,22 @@ const Color _feverGold = Color(0xFFFFD700);
 const Color _feverOrange = Color(0xFFFF9800);
 const Color _dangerRed = Color(0xFFE74C3C);
 const Color _vignetteDark = Color(0xFF1A1A1A);
-const Color _phaseBannerBg = Color(0xCC000000);
 const Color _eventBannerBg = Color(0xFF2D3436);
 
 // =============================================================================
-// 1. FloatingScoreText
+// 1. ComboIndicator
 // =============================================================================
 
-/// Displays a score label (e.g. "+150") that floats upward 60 px and fades out.
+/// Shows the current combo count with 5-level visual escalation.
 ///
-/// Usage: place inside a Stack at the desired position. The widget removes
-/// itself visually after [duration] by becoming fully transparent.
+/// Place this in the HUD row of the game screen. The indicator animates
+/// colour, scale, shake, and glow depending on the combo level:
 ///
-/// ```dart
-/// // game_screen 의 Stack 안에서 사용:
-/// FloatingScoreText(
-///   score: '+150',
-///   color: AppColors.correct,
-///   combo: currentCombo,
-///   position: Offset(tapX, tapY),
-///   onComplete: () => setState(() => _floatingTexts.remove(key)),
-/// )
-/// ```
-///
-/// * [score]  – the score string to display, e.g. "+150".
-/// * [color]  – text color, defaults to [AppColors.correct].
-/// * [combo]  – current combo; when >= 5 the font size scales up.
-/// * [position] – the origin Offset (top-left) inside the parent Stack.
-/// * [duration] – total animation time (default 800 ms).
-/// * [onComplete] – called when the animation finishes so the parent can
-///   remove the widget from the tree.
-class FloatingScoreText extends StatefulWidget {
-  final String score;
-  final Color color;
-  final int combo;
-  final Offset position;
-  final Duration duration;
-  final VoidCallback? onComplete;
-
-  const FloatingScoreText({
-    super.key,
-    required this.score,
-    this.color = AppColors.correct,
-    this.combo = 0,
-    this.position = Offset.zero,
-    this.duration = const Duration(milliseconds: 800),
-    this.onComplete,
-  });
-
-  @override
-  State<FloatingScoreText> createState() => _FloatingScoreTextState();
-}
-
-class _FloatingScoreTextState extends State<FloatingScoreText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _offsetY;
-  late final Animation<double> _opacity;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration,
-    );
-    _offsetY = Tween<double>(begin: 0, end: -60).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-
-    _controller.forward().then((_) {
-      widget.onComplete?.call();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Base size is 16; scale up for combo >= 5.
-    final double baseFontSize = 16;
-    final double fontSize;
-    if (widget.combo >= 20) {
-      fontSize = baseFontSize + 10;
-    } else if (widget.combo >= 10) {
-      fontSize = baseFontSize + 6;
-    } else if (widget.combo >= 5) {
-      fontSize = baseFontSize + 3;
-    } else {
-      fontSize = baseFontSize;
-    }
-
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Positioned(
-          left: widget.position.dx,
-          top: widget.position.dy + _offsetY.value,
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: _opacity.value,
-              child: Text(
-                widget.score,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w900,
-                  color: widget.color,
-                  shadows: const [
-                    Shadow(
-                      color: Colors.black26,
-                      offset: Offset(0, 2),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// =============================================================================
-// 2. ComboIndicator
-// =============================================================================
-
-/// Shows combo count with 5-level visual escalation.
-///
-/// ```dart
-/// // game_screen HUD 영역에 배치:
-/// ComboIndicator(
-///   combo: game.combo,
-///   feverActive: game.isFever,
-/// )
-/// ```
-///
-/// * 0..4  — grey text, no effects.
-/// * 5..9  — amber text + subtle pulse.
-/// * 10..14 — orange + strong pulse + size increase.
-/// * 15..19 — red + shake + pre-fever glow.
-/// * 20+   — FEVER: orange background + fire icon + continuous pulse.
+/// * 0..4  -- grey text, no effects.
+/// * 5..9  -- amber text + subtle pulse.
+/// * 10..14 -- orange + strong pulse + size increase.
+/// * 15..19 -- red + shake + pre-fever glow.
+/// * 20+   -- FEVER: orange background + fire icon + continuous pulse.
 class ComboIndicator extends StatefulWidget {
   final int combo;
   final bool feverActive;
@@ -335,25 +200,18 @@ class _ComboIndicatorState extends State<ComboIndicator>
 enum _ComboLevel { base, warmup, heating, preFever, fever }
 
 // =============================================================================
-// 3. FeverOverlay
+// 2. FeverOverlay
 // =============================================================================
 
 /// Full-screen overlay for fever mode.
 ///
-/// ```dart
-/// // game_screen 의 Stack 최상단에 배치:
-/// Positioned.fill(
-///   child: FeverOverlay(feverActive: game.isFever),
-/// )
-/// ```
+/// Place inside a [Positioned.fill] within the game screen's [Stack].
 ///
-/// * On enter  — golden flash (300 ms).
-/// * While active — pulsing golden border glow.
-/// * On exit   — flash out (200 ms).
+/// * On enter  -- golden flash (300 ms).
+/// * While active -- pulsing golden border glow.
+/// * On exit   -- flash out (200 ms).
 ///
 /// Wrapped in [IgnorePointer] so it never blocks touch.
-///
-/// Pass [feverActive] = true / false to trigger transitions.
 class FeverOverlay extends StatefulWidget {
   final bool feverActive;
 
@@ -485,26 +343,19 @@ class _FeverOverlayState extends State<FeverOverlay>
 }
 
 // =============================================================================
-// 4. MentalWarning
+// 3. MentalWarning
 // =============================================================================
 
 /// Multi-stage mental health warning overlay.
 ///
-/// ```dart
-/// // game_screen 의 Stack 최상단(FeverOverlay 위 또는 아래):
-/// Positioned.fill(
-///   child: MentalWarning(
-///     mentalPercent: game.mentalHp / game.maxMentalHp,
-///   ),
-/// )
-/// ```
+/// Place inside a [Positioned.fill] within the game screen's [Stack].
 ///
-/// * > 50 %   — nothing.
-/// * <= 50 %  — vignette 10 %.
-/// * <= 30 %  — red border blink + vignette 20 %.
-/// * <= 15 %  — desaturation + stronger red pulse + vignette 30 %.
+/// * > 50 %   -- nothing rendered.
+/// * <= 50 %  -- vignette at 10 % opacity.
+/// * <= 30 %  -- red border blink + vignette at 20 %.
+/// * <= 15 %  -- desaturation + stronger red pulse + vignette at 30 %.
 ///
-/// [mentalPercent] should be 0.0 .. 1.0.
+/// [mentalPercent] should be in the range 0.0 .. 1.0.
 class MentalWarning extends StatefulWidget {
   final double mentalPercent;
 
@@ -625,161 +476,17 @@ class _MentalWarningState extends State<MentalWarning>
 }
 
 // =============================================================================
-// 5. PhaseTransitionBanner
-// =============================================================================
-
-/// Shows a phase name (e.g. "PHASE 2") via scale-in, hold for 1 s, then
-/// fade-out.
-///
-/// ```dart
-/// // game_screen 에서 페이즈 전환 시 Stack 에 추가:
-/// if (showPhaseBanner)
-///   Positioned.fill(
-///     child: PhaseTransitionBanner(
-///       phase: 'PHASE 2',
-///       onComplete: () => setState(() => showPhaseBanner = false),
-///     ),
-///   )
-/// ```
-///
-/// Set [phase] to trigger the animation. The widget auto-hides once complete.
-/// [onComplete] fires when fully done.
-class PhaseTransitionBanner extends StatefulWidget {
-  final String phase;
-  final VoidCallback? onComplete;
-
-  const PhaseTransitionBanner({
-    super.key,
-    required this.phase,
-    this.onComplete,
-  });
-
-  @override
-  State<PhaseTransitionBanner> createState() => _PhaseTransitionBannerState();
-}
-
-class _PhaseTransitionBannerState extends State<PhaseTransitionBanner>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-  late final Animation<double> _opacity;
-
-  // Total = scaleIn 300ms + hold 1000ms + fadeOut 400ms = 1700ms
-  static const _totalMs = 1700;
-  static const _scaleInEnd = 300.0 / _totalMs;
-  static const _holdEnd = 1300.0 / _totalMs;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: _totalMs),
-    );
-
-    // Scale: 0 -> 1.15 -> 1.0 during scaleIn, then stay 1.0
-    _scale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.0, end: 1.15)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: _scaleInEnd * 100,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.15, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: (_holdEnd - _scaleInEnd) * 20, // quick settle
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween(1.0),
-        weight: (1.0 - _holdEnd) * 100 + (_holdEnd - _scaleInEnd) * 80,
-      ),
-    ]).animate(_controller);
-
-    // Opacity: 1.0 during scaleIn+hold, fade to 0 after hold
-    _opacity = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: ConstantTween(1.0),
-        weight: _holdEnd * 100,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: (1.0 - _holdEnd) * 100,
-      ),
-    ]).animate(_controller);
-
-    _controller.forward().then((_) {
-      widget.onComplete?.call();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          if (_opacity.value <= 0.001) return const SizedBox.shrink();
-          return Container(
-            color: _phaseBannerBg
-                .withValues(alpha: 0.5 * _opacity.value),
-            child: Center(
-              child: Opacity(
-                opacity: _opacity.value,
-                child: Transform.scale(
-                  scale: _scale.value,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: _phaseBannerBg,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      widget.phase,
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 6,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// 6. EventNotification
+// 4. EventNotification
 // =============================================================================
 
 /// Slides down from the top, stays for 2 s, then slides back up.
 ///
-/// ```dart
-/// // game_screen Stack 최상단에서 이벤트 발생 시:
-/// if (pendingEvent != null)
-///   EventNotification(
-///     eventName: pendingEvent!.name,
-///     eventDescription: pendingEvent!.description,
-///     onDismissed: () => setState(() => pendingEvent = null),
-///   )
-/// ```
+/// Place in the game screen's [Stack]. The widget auto-hides after the
+/// animation completes and fires [onDismissed].
 ///
-/// * [eventName]  – e.g. "실검 등장"
-/// * [eventDescription] – e.g. "속도 UP!"
-/// * [onDismissed] – fires when fully hidden.
+/// * [eventName]        -- e.g. "실검 등장"
+/// * [eventDescription] -- e.g. "속도 UP!"
+/// * [onDismissed]      -- fires when fully hidden.
 class EventNotification extends StatefulWidget {
   final String eventName;
   final String eventDescription;

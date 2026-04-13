@@ -37,13 +37,26 @@ class CommentService {
     List<Comment> pool,
     int combo,
     String celebType,
-    BalanceConfig balance,
-  ) {
+    BalanceConfig balance, {
+    double? toxicRatioOverride,
+  }) {
     final phase = balance.getPhaseByCombo(combo);
     final modifier = balance.getCelebModifier(celebType);
     final diffOffset = (modifier['difficulty_offset'] as num).toInt();
     final maxDiff = ((phase['max_difficulty'] as int) + diffOffset).clamp(1, 5);
-    final toxicRatio = (phase['toxic_ratio'] as num).toDouble();
+
+    // If an active event overrides the toxic ratio, use that directly;
+    // otherwise apply the celeb-specific multiplier to the phase ratio.
+    final double toxicRatio;
+    if (toxicRatioOverride != null) {
+      toxicRatio = toxicRatioOverride.clamp(0.0, 1.0);
+    } else {
+      final toxicRatioMultiplier =
+          (modifier['toxic_ratio_multiplier'] as num?)?.toDouble() ?? 1.0;
+      toxicRatio =
+          ((phase['toxic_ratio'] as num).toDouble() * toxicRatioMultiplier)
+              .clamp(0.0, 1.0);
+    }
 
     final eligible = pool
         .where((c) => c.difficulty <= maxDiff && !c.eventOnly)

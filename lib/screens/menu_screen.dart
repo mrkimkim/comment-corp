@@ -2,28 +2,23 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import 'game_screen.dart';
+import 'leaderboard_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
 
   static const _celebTypes = [
-    ('idol', '아이돌', Icons.star, AppColors.idol, 'Easy',
-        'K-POP 아이돌의 댓글을 관리하세요'),
-    ('actor', '배우', Icons.movie, AppColors.actor, 'Normal',
-        '영화/드라마 배우의 댓글을 관리하세요'),
-    ('youtuber', '유튜버', Icons.play_circle, AppColors.youtuber, 'Normal',
-        '유튜버/스트리머의 댓글을 관리하세요'),
-    ('sports', '스포츠', Icons.sports_soccer, AppColors.sports, 'Normal',
-        '스포츠 선수의 댓글을 관리하세요'),
-    ('politician', '정치인', Icons.account_balance, AppColors.politician, 'Hard',
-        '정치인의 댓글을 관리하세요'),
+    ('idol', '아이돌', Icons.star, AppColors.idol, 1,
+        '악플 적음, 데미지 낮음'),
+    ('youtuber', '유튜버', Icons.play_circle, AppColors.youtuber, 2,
+        '악플 보통, 데미지 보통'),
+    ('sports', '스포츠', Icons.sports_soccer, AppColors.sports, 3,
+        '기본 난이도, 균형 잡힌 플레이'),
+    ('actor', '배우', Icons.movie, AppColors.actor, 4,
+        '악플 많음, 데미지 높음'),
+    ('politician', '정치인', Icons.account_balance, AppColors.politician, 5,
+        '악플 폭주, 데미지 치명적'),
   ];
-
-  static const _difficultyColors = {
-    'Easy': AppColors.correct,
-    'Normal': Color(0xFFFF8C42),
-    'Hard': AppColors.wrong,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +51,8 @@ class MenuScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               _buildHowToPlay(),
+              const SizedBox(height: 16),
+              _buildLeaderboardButton(context),
               const SizedBox(height: 28),
               const Text(
                 '셀럽 타입을 선택하세요',
@@ -68,16 +65,14 @@ class MenuScreen extends StatelessWidget {
                 itemCount: _celebTypes.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final (type, label, icon, color, difficulty, description) =
+                  final (type, label, icon, color, difficultyLevel, description) =
                       _celebTypes[index];
                   return _CelebButton(
                     type: type,
                     label: label,
                     icon: icon,
                     color: color,
-                    difficulty: difficulty,
-                    difficultyColor:
-                        _difficultyColors[difficulty] ?? AppColors.textHint,
+                    difficultyLevel: difficultyLevel,
                     description: description,
                     onTap: () => _startGame(context, type),
                   );
@@ -180,6 +175,39 @@ class MenuScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildLeaderboardButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const LeaderboardScreen(),
+            ),
+          );
+        },
+        icon: const Text('\u{1F3C6}', style: TextStyle(fontSize: 18)),
+        label: Text(
+          '리더보드',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.secondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.secondary,
+          side: BorderSide(
+            color: AppColors.secondary.withValues(alpha: 0.4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _startGame(BuildContext context, String celebType) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -194,8 +222,8 @@ class _CelebButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  final String difficulty;
-  final Color difficultyColor;
+  /// 1~5 scale; 1 = easiest, 5 = hardest
+  final int difficultyLevel;
   final String description;
   final VoidCallback onTap;
 
@@ -204,11 +232,18 @@ class _CelebButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.color,
-    required this.difficulty,
-    required this.difficultyColor,
+    required this.difficultyLevel,
     required this.description,
     required this.onTap,
   });
+
+  Color get _difficultyColor {
+    if (difficultyLevel <= 1) return AppColors.correct;
+    if (difficultyLevel <= 2) return const Color(0xFF4ECDC4);
+    if (difficultyLevel <= 3) return const Color(0xFFFF8C42);
+    if (difficultyLevel <= 4) return AppColors.wrong;
+    return const Color(0xFFD63031);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -241,21 +276,17 @@ class _CelebButton extends StatelessWidget {
                       children: [
                         Text(label, style: AppTextStyles.bodyLarge),
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: difficultyColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            difficulty,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: difficultyColor,
-                            ),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(5, (i) => Icon(
+                            i < difficultyLevel
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            size: 16,
+                            color: i < difficultyLevel
+                                ? _difficultyColor
+                                : AppColors.textHint.withValues(alpha: 0.4),
+                          )),
                         ),
                       ],
                     ),

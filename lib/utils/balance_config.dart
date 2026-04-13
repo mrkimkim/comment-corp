@@ -131,11 +131,31 @@ class BalanceConfig {
       {'min_combo': 30, 'toxic_ratio': 0.60, 'max_difficulty': 5, 'interval': 0.5},
     ],
     'celeb_type_modifiers': {
-      'idol': {'speed_multiplier': 0.8, 'difficulty_offset': -1},
-      'actor': {'speed_multiplier': 1.0, 'difficulty_offset': 1},
-      'youtuber': {'speed_multiplier': 0.85, 'difficulty_offset': 0},
-      'sports': {'speed_multiplier': 1.0, 'difficulty_offset': 0},
-      'politician': {'speed_multiplier': 1.3, 'difficulty_offset': 2},
+      'idol': {
+        'difficulty_offset': -1,
+        'toxic_ratio_multiplier': 0.8,
+        'damage_multiplier': 0.7,
+      },
+      'youtuber': {
+        'difficulty_offset': 0,
+        'toxic_ratio_multiplier': 0.9,
+        'damage_multiplier': 0.9,
+      },
+      'sports': {
+        'difficulty_offset': 0,
+        'toxic_ratio_multiplier': 1.0,
+        'damage_multiplier': 1.0,
+      },
+      'actor': {
+        'difficulty_offset': 1,
+        'toxic_ratio_multiplier': 1.1,
+        'damage_multiplier': 1.2,
+      },
+      'politician': {
+        'difficulty_offset': 2,
+        'toxic_ratio_multiplier': 1.3,
+        'damage_multiplier': 1.5,
+      },
     },
     'items': {
       'detector_per_game': 3,

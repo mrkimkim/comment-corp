@@ -171,12 +171,15 @@ class GameNotifier extends Notifier<GameState> {
   }
 
   /// Pick the next comment based on current combo (dynamic difficulty).
+  /// If an event with [toxicRatioOverride] is active, that ratio is forwarded
+  /// to the comment service so the event actually affects gameplay.
   /// Returns null only if the comment pool is completely empty.
   Comment? _nextComment() {
     if (_commentPool.isEmpty) return null;
     final commentService = ref.read(commentServiceProvider);
     return commentService.pickNextComment(
       _commentPool, state.combo, state.celebType, _balance,
+      toxicRatioOverride: state.activeEvent?.toxicRatioOverride,
     );
   }
 
@@ -249,7 +252,13 @@ class GameNotifier extends Notifier<GameState> {
     var mental = state.mental;
 
     if (comment.isToxic && approved) {
-      var damage = likes * _balance.toxicDamageCoefficient * comment.damageWeight;
+      final celebMod = _balance.getCelebModifier(state.celebType);
+      final celebDamageMultiplier =
+          (celebMod['damage_multiplier'] as num?)?.toDouble() ?? 1.0;
+      var damage = likes *
+          _balance.toxicDamageCoefficient *
+          comment.damageWeight *
+          celebDamageMultiplier;
       if (damage < 1) damage = 1;
       mental -= damage;
     }

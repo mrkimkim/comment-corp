@@ -1,12 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../models/game_state.dart';
 import '../providers/game_provider.dart';
 import 'game_screen.dart';
+import 'leaderboard_screen.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({super.key});
@@ -211,6 +213,45 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
     );
   }
 
+  // --- Celeb type emoji mapping ---
+  static String _celebEmoji(String celebType) {
+    return switch (celebType) {
+      'idol' => '\u2B50',
+      'actor' => '\uD83C\uDFAC',
+      'youtuber' => '\uD83D\uDCFA',
+      'sports' => '\u26BD',
+      'politician' => '\uD83C\uDFDB\uFE0F',
+      _ => '\uD83C\uDFAC',
+    };
+  }
+
+  // --- Celeb type Korean label ---
+  static String _celebLabel(String celebType) {
+    return switch (celebType) {
+      'idol' => '\uC544\uC774\uB3CC',
+      'actor' => '\uBC30\uC6B0',
+      'youtuber' => '\uC720\uD2B0\uBC84',
+      'sports' => '\uC2A4\uD3EC\uCE20',
+      'politician' => '\uC815\uCE58\uC778',
+      _ => celebType,
+    };
+  }
+
+  String _generateShareText() {
+    final game = ref.read(gameProvider);
+    final (grade, _) = _getGrade(_finalScore);
+    final accuracy = game.totalProcessed > 0
+        ? (game.correctCount / game.totalProcessed * 100)
+        : 0.0;
+    final emoji = _celebEmoji(game.celebType);
+    final label = _celebLabel(game.celebType);
+    final formattedScore = _AnimatedScoreCard._formatNumber(_finalScore);
+
+    return '\uB313\uAE00 \uC8FC\uC2DD\uD68C\uC0AC \uD83C\uDFE2\n'
+        '$label $emoji | \uB4F1\uAE09: $grade\n'
+        '\uC810\uC218: $formattedScore | \uCF64\uBCF4: ${game.maxCombo}x | \uC815\uD655\uB3C4: ${accuracy.toStringAsFixed(1)}%';
+  }
+
   @override
   Widget build(BuildContext context) {
     final game = ref.watch(gameProvider);
@@ -322,6 +363,42 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                     SizedBox(
                       width: double.infinity,
                       height: 54,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final text = _generateShareText();
+                          await Clipboard.setData(ClipboardData(text: text));
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('\uD074\uB9BD\uBCF4\uB4DC\uC5D0 \uBCF5\uC0AC\uB418\uC5C8\uC2B5\uB2C8\uB2E4!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          side: const BorderSide(
+                            color: AppColors.secondary,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Text(
+                          '\uD83D\uDCCB',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                        label: const Text(
+                          '\uACB0\uACFC \uBCF5\uC0AC',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
                       child: OutlinedButton(
                         onPressed: () {
                           ref.read(gameProvider.notifier).reset();
@@ -339,9 +416,32 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                           ),
                         ),
                         child: const Text(
-                          '메뉴로',
+                          '\uBA54\uB274\uB85C',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => LeaderboardScreen(
+                              initialCelebType: celebType,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Text(
+                        '\u{1F3C6}',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      label: Text(
+                        '\uB9AC\uB354\uBCF4\uB4DC',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
