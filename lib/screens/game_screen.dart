@@ -49,9 +49,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
   void initState() {
     super.initState();
 
-    // Kick off the game
+    // Kick off the game & start BGM
     Future.microtask(() {
       ref.read(gameProvider.notifier).startGame(widget.celebType);
+      ref.read(audioServiceProvider).playBgm(widget.celebType);
     });
 
     // ── Flash (400ms fade-out) ──
@@ -93,6 +94,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   @override
   void dispose() {
+    // Stop BGM when leaving the game screen (safety net)
+    try {
+      ref.read(audioServiceProvider).stopBgm();
+    } catch (_) {
+      // ref may already be invalid during dispose — ignore.
+    }
     _flashController.dispose();
     _pulseController.dispose();
     _floatingScoreController.dispose();
@@ -149,6 +156,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       // ── SFX: Game over ──
       if (prev?.status != GameStatus.gameOver &&
           next.status == GameStatus.gameOver) {
+        audio.stopBgm();
         audio.playSfx(Sfx.gameOver);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ResultScreen()),
