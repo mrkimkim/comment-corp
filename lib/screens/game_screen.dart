@@ -202,7 +202,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
       }
     });
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        // Stop BGM + reset game before popping
+        try { ref.read(audioServiceProvider).stopBgm(); } catch (_) {}
+        ref.read(gameProvider.notifier).reset();
+        Navigator.of(context).pop();
+      },
+      child: Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
@@ -297,6 +306,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           ],
         ),
       ),
+    ),
     );
   }
 
